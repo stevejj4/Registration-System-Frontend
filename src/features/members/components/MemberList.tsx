@@ -1,0 +1,121 @@
+import React, { useState, useEffect } from "react";
+import { memberApi } from "@/api/memberApi";
+import { MemberListItem } from "@/types/member";
+import { Search, RefreshCw, Edit2 } from "lucide-react";
+import { motion } from "motion/react";
+import { filterMembers } from "@/utils/helpers";
+import { useMembers } from '@/features/members';
+import { useApiCall } from "@/hooks/useApiCall";
+
+interface Props {
+  onSelectMember: (id: string) => void;
+  selectedId?: string;
+}
+
+export default function MemberList({ onSelectMember, selectedId }: Props) {
+  const [members, setMembers] = useState<MemberListItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const { loading, error, execute: fetchAll } = useApiCall(
+    () => memberApi.getAll(),
+    (data: MemberListItem[]) => setMembers(data),
+    (err) => console.error('Failed to fetch members:', err)
+  );
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  const filteredMembers = filterMembers(members, searchTerm);
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      {/* Search Bar */}
+      <div className="p-6 border-b border-gray-100 flex gap-4 items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search by name, group, or phone..."
+            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm placeholder:text-gray-400"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <button 
+          onClick={fetchAll}
+          className="p-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors shadow-sm"
+        >
+          <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200">
+              <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest">System ID</th>
+              <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest">National ID</th>
+              <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest">Full Name</th>
+              <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest">Registration Date</th>
+              <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest">Group Name</th>
+              <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest">Phone Number</th>
+              <th className="px-6 py-4 text-[11px] font-bold text-gray-500 uppercase tracking-widest text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-400 font-medium">Loading principal records...</td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center text-red-500 font-medium">{error}</td>
+              </tr>
+            ) : filteredMembers.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-400 font-medium">No members found</td>
+              </tr>
+            ) : (
+              filteredMembers.map((member) => (
+                <motion.tr
+                  key={member.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  whileHover={{ backgroundColor: "#f9fafb" }}
+                  className={`border-b border-gray-100 cursor-pointer transition-colors ${
+                    selectedId === member.id ? 'bg-blue-50' : ''
+                  }`}
+                  onClick={() => onSelectMember(member.id)}
+                >
+                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">{member.id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{member.nationalID}</td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-medium text-gray-900">
+                      {member.firstName} {member.lastName}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{member.registrationDate}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{member.groupName}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{member.phoneNumber}</td>
+                  <td className="px-6 py-4 text-sm text-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectMember(member.id);
+                      }}
+                      className="inline-flex items-center justify-center p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </motion.tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

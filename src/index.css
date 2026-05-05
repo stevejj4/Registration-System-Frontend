@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  :root {
+    --bg: #f3f4f6;
+    --ink: #1f2937;
+    --primary: #3b82f6;
+    --sidebar: #3b82f6;
+    --sidebar-dark: #1e293b;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+}
+
+@layer components {
+  .btn-action {
+    @apply px-4 py-2 rounded-md text-sm font-medium transition-all;
+  }
+  
+  .card {
+    @apply bg-white border border-gray-200 rounded-lg shadow-sm;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-white/10 transition-colors cursor-pointer;
+  }
+
+  .nav-item.active {
+    @apply bg-slate-900 text-white border-l-4 border-white;
+  }
+}
+
