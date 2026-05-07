@@ -14,13 +14,33 @@ interface Props {
 export default function MemberRegistration({ onSuccess, onCancel }: Props) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{
-    principal: string | null;
-    nextOfKin: string | null;
+    principalFirstName: string | null;
+    principalLastName: string | null;
+    principalNationalID: string | null;
+    principalPhoneNumber: string | null;
+    principalDateOfBirth: string | null;
+    principalGroupName: string | null;
+    nextOfKinFirstName: string | null;
+    nextOfKinLastName: string | null;
+    nextOfKinRelationship: string | null;
+    nextOfKinIdNumber: string | null;
+    nextOfKinPhoneNumber: string | null;
+    nextOfKinDateOfBirth: string | null;
     dependants: string | null;
     general: string | null;
   }>({
-    principal: null,
-    nextOfKin: null,
+    principalFirstName: null,
+    principalLastName: null,
+    principalNationalID: null,
+    principalPhoneNumber: null,
+    principalDateOfBirth: null,
+    principalGroupName: null,
+    nextOfKinFirstName: null,
+    nextOfKinLastName: null,
+    nextOfKinRelationship: null,
+    nextOfKinIdNumber: null,
+    nextOfKinPhoneNumber: null,
+    nextOfKinDateOfBirth: null,
     dependants: null,
     general: null,
   });
@@ -50,47 +70,57 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     let isValid = true;
 
     if (!principal.firstName.trim()) {
-      newErrors.principal = "First name is required";
+      newErrors.principalFirstName = "First name is required";
       isValid = false;
     } else if (principal.firstName.length < VALIDATION_RULES.MIN_NAME_LENGTH) {
-      newErrors.principal = `First name must be at least ${VALIDATION_RULES.MIN_NAME_LENGTH} characters`;
+      newErrors.principalFirstName = `First name must be at least ${VALIDATION_RULES.MIN_NAME_LENGTH} characters`;
       isValid = false;
     } else {
-      newErrors.principal = null;
+      newErrors.principalFirstName = null;
     }
 
     if (!principal.lastName.trim()) {
-      newErrors.principal = "Last name is required";
+      newErrors.principalLastName = "Last name is required";
       isValid = false;
     } else if (principal.lastName.length < VALIDATION_RULES.MIN_NAME_LENGTH) {
-      newErrors.principal = `Last name must be at least ${VALIDATION_RULES.MIN_NAME_LENGTH} characters`;
+      newErrors.principalLastName = `Last name must be at least ${VALIDATION_RULES.MIN_NAME_LENGTH} characters`;
       isValid = false;
+    } else {
+      newErrors.principalLastName = null;
     }
 
     if (!principal.nationalID.trim()) {
-      newErrors.principal = "National ID is required";
+      newErrors.principalNationalID = "National ID is required";
       isValid = false;
     } else if (!VALIDATION_RULES.NATIONAL_ID_REGEX.test(principal.nationalID)) {
-      newErrors.principal = ERROR_MESSAGES.INVALID_ID;
+      newErrors.principalNationalID = ERROR_MESSAGES.INVALID_ID;
       isValid = false;
+    } else {
+      newErrors.principalNationalID = null;
     }
 
     if (!principal.phoneNumber.trim()) {
-      newErrors.principal = "Phone number is required";
+      newErrors.principalPhoneNumber = "Phone number is required";
       isValid = false;
     } else if (!VALIDATION_RULES.PHONE_REGEX.test(principal.phoneNumber)) {
-      newErrors.principal = ERROR_MESSAGES.INVALID_PHONE;
+      newErrors.principalPhoneNumber = ERROR_MESSAGES.INVALID_PHONE;
       isValid = false;
+    } else {
+      newErrors.principalPhoneNumber = null;
     }
 
     if (!principal.dateOfBirth) {
-      newErrors.principal = "Date of birth is required";
+      newErrors.principalDateOfBirth = "Date of birth is required";
       isValid = false;
+    } else {
+      newErrors.principalDateOfBirth = null;
     }
 
     if (!principal.groupName.trim()) {
-      newErrors.principal = "Group name is required";
+      newErrors.principalGroupName = "Group name is required";
       isValid = false;
+    } else {
+      newErrors.principalGroupName = null;
     }
 
     setErrors(newErrors);
@@ -102,44 +132,54 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     let isValid = true;
 
     if (!nextOfKin.firstName.trim()) {
-      newErrors.nextOfKin = "First name is required";
+      newErrors.nextOfKinFirstName = "First name is required";
       isValid = false;
     } else if (nextOfKin.firstName.length < VALIDATION_RULES.MIN_NAME_LENGTH) {
-      newErrors.nextOfKin = `First name must be at least ${VALIDATION_RULES.MIN_NAME_LENGTH} characters`;
+      newErrors.nextOfKinFirstName = `First name must be at least ${VALIDATION_RULES.MIN_NAME_LENGTH} characters`;
       isValid = false;
     } else {
-      newErrors.nextOfKin = null;
+      newErrors.nextOfKinFirstName = null;
     }
 
     if (!nextOfKin.lastName.trim()) {
-      newErrors.nextOfKin = "Last name is required";
+      newErrors.nextOfKinLastName = "Last name is required";
       isValid = false;
     } else if (nextOfKin.lastName.length < VALIDATION_RULES.MIN_NAME_LENGTH) {
-      newErrors.nextOfKin = `Last name must be at least ${VALIDATION_RULES.MIN_NAME_LENGTH} characters`;
+      newErrors.nextOfKinLastName = `Last name must be at least ${VALIDATION_RULES.MIN_NAME_LENGTH} characters`;
       isValid = false;
+    } else {
+      newErrors.nextOfKinLastName = null;
     }
 
     if (!nextOfKin.relationship.trim()) {
-      newErrors.nextOfKin = "Relationship is required";
+      newErrors.nextOfKinRelationship = "Relationship is required";
       isValid = false;
+    } else {
+      newErrors.nextOfKinRelationship = null;
     }
 
     if (!nextOfKin.idNumber.trim()) {
-      newErrors.nextOfKin = "ID number is required";
+      newErrors.nextOfKinIdNumber = "ID number is required";
       isValid = false;
+    } else {
+      newErrors.nextOfKinIdNumber = null;
     }
 
     if (!nextOfKin.phoneNumber.trim()) {
-      newErrors.nextOfKin = "Phone number is required";
+      newErrors.nextOfKinPhoneNumber = "Phone number is required";
       isValid = false;
     } else if (!VALIDATION_RULES.PHONE_REGEX.test(nextOfKin.phoneNumber)) {
-      newErrors.nextOfKin = ERROR_MESSAGES.INVALID_PHONE;
+      newErrors.nextOfKinPhoneNumber = ERROR_MESSAGES.INVALID_PHONE;
       isValid = false;
+    } else {
+      newErrors.nextOfKinPhoneNumber = null;
     }
 
     if (!nextOfKin.dateOfBirth) {
-      newErrors.nextOfKin = "Date of birth is required";
+      newErrors.nextOfKinDateOfBirth = "Date of birth is required";
       isValid = false;
+    } else {
+      newErrors.nextOfKinDateOfBirth = null;
     }
 
     setErrors(newErrors);
@@ -219,7 +259,22 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     }
 
     setLoading(true);
-    setErrors({ principal: null, nextOfKin: null, dependants: null, general: null });
+    setErrors({ 
+      principalFirstName: null,
+      principalLastName: null,
+      principalNationalID: null,
+      principalPhoneNumber: null,
+      principalDateOfBirth: null,
+      principalGroupName: null,
+      nextOfKinFirstName: null,
+      nextOfKinLastName: null,
+      nextOfKinRelationship: null,
+      nextOfKinIdNumber: null,
+      nextOfKinPhoneNumber: null,
+      nextOfKinDateOfBirth: null,
+      dependants: null,
+      general: null,
+    });
 
     try {
       // Check backend connectivity first
@@ -278,6 +333,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter first name"
             />
+            {errors.principalFirstName && (
+              <div className="mt-1 text-sm text-red-600">{errors.principalFirstName}</div>
+            )}
           </div>
 
           <div>
@@ -291,6 +349,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter last name"
             />
+            {errors.principalLastName && (
+              <div className="mt-1 text-sm text-red-600">{errors.principalLastName}</div>
+            )}
           </div>
 
           <div>
@@ -304,6 +365,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter 8-digit national ID"
             />
+            {errors.principalNationalID && (
+              <div className="mt-1 text-sm text-red-600">{errors.principalNationalID}</div>
+            )}
           </div>
 
           <div>
@@ -317,6 +381,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="07XXXXXXXX"
             />
+            {errors.principalPhoneNumber && (
+              <div className="mt-1 text-sm text-red-600">{errors.principalPhoneNumber}</div>
+            )}
           </div>
 
           <div>
@@ -329,6 +396,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               onChange={(e) => setPrincipal({ ...principal, dateOfBirth: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {errors.principalDateOfBirth && (
+              <div className="mt-1 text-sm text-red-600">{errors.principalDateOfBirth}</div>
+            )}
           </div>
 
           <div>
@@ -342,12 +412,11 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter group name"
             />
+            {errors.principalGroupName && (
+              <div className="mt-1 text-sm text-red-600">{errors.principalGroupName}</div>
+            )}
           </div>
         </div>
-
-        {errors.principal && (
-          <div className="mt-2 text-sm text-red-600">{errors.principal}</div>
-        )}
       </div>
 
       {/* Next of Kin Information */}
@@ -369,6 +438,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter first name"
             />
+            {errors.nextOfKinFirstName && (
+              <div className="mt-1 text-sm text-red-600">{errors.nextOfKinFirstName}</div>
+            )}
           </div>
 
           <div>
@@ -382,6 +454,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter last name"
             />
+            {errors.nextOfKinLastName && (
+              <div className="mt-1 text-sm text-red-600">{errors.nextOfKinLastName}</div>
+            )}
           </div>
 
           <div>
@@ -400,6 +475,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               <option value="Child">Child</option>
               <option value="Other">Other</option>
             </select>
+            {errors.nextOfKinRelationship && (
+              <div className="mt-1 text-sm text-red-600">{errors.nextOfKinRelationship}</div>
+            )}
           </div>
 
           <div>
@@ -413,6 +491,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter ID number"
             />
+            {errors.nextOfKinIdNumber && (
+              <div className="mt-1 text-sm text-red-600">{errors.nextOfKinIdNumber}</div>
+            )}
           </div>
 
           <div>
@@ -426,6 +507,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="07XXXXXXXX"
             />
+            {errors.nextOfKinPhoneNumber && (
+              <div className="mt-1 text-sm text-red-600">{errors.nextOfKinPhoneNumber}</div>
+            )}
           </div>
 
           <div>
@@ -438,6 +522,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               onChange={(e) => setNextOfKin({ ...nextOfKin, dateOfBirth: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {errors.nextOfKinDateOfBirth && (
+              <div className="mt-1 text-sm text-red-600">{errors.nextOfKinDateOfBirth}</div>
+            )}
           </div>
 
           <div className="md:col-span-2">
@@ -454,10 +541,6 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
             <p className="text-xs text-gray-500 mt-1">Optional: Path to ID attachment file</p>
           </div>
         </div>
-
-        {errors.nextOfKin && (
-          <div className="mt-2 text-sm text-red-600">{errors.nextOfKin}</div>
-        )}
       </div>
 
       {/* Dependants Section */}
@@ -605,8 +688,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
           </div>
         )}
 
-        {errors.dependants && (
-          <div className="mt-2 text-sm text-red-600">{errors.dependants}</div>
+        {/* Display general error messages for dependants */}
+        {errors.general && (
+          <div className="mt-2 text-sm text-red-600">{errors.general}</div>
         )}
       </div>
 
