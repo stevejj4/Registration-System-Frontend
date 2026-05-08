@@ -167,7 +167,6 @@ export const memberApi = {
       );
       return mapMemberDetails(res.data);
     } catch (error) {
-      console.error("Next of Kin patch failed:", error.response?.data || error);
       handleError(error, "Failed to patch next of kin");
       throw error;
     }

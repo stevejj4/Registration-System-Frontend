@@ -10,7 +10,12 @@ interface Props {
   confirmText?: string;
   cancelText?: string;
 }
-
+/**
+ * Confirmation Modal Component
+ * - isOpen: Controls visibility of the modal.
+ * - title: The title displayed at the top of the modal.
+ * - message: The main content/message of the modal.
+ */
 export default function ConfirmationModal({
   isOpen,
   title,
