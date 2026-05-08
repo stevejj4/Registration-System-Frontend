@@ -50,7 +50,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="flex-shrink-0 bg-blue-500 rounded-md p-3">
+            <div className="shrink-0 bg-blue-500 rounded-md p-3">
               <Users className="h-6 w-6 text-white" />
             </div>
             <div className="ml-4">
@@ -62,7 +62,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
+            <div className="shrink-0 bg-green-500 rounded-md p-3">
               <UserPlus className="h-6 w-6 text-white" />
             </div>
             <div className="ml-4">
@@ -74,7 +74,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="flex-shrink-0 bg-purple-500 rounded-md p-3">
+            <div className="shrink-0 bg-purple-500 rounded-md p-3">
               <TrendingUp className="h-6 w-6 text-white" />
             </div>
             <div className="ml-4">
@@ -86,7 +86,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="flex-shrink-0 bg-orange-500 rounded-md p-3">
+            <div className="shrink-0 bg-orange-500 rounded-md p-3">
               <Activity className="h-6 w-6 text-white" />
             </div>
             <div className="ml-4">
@@ -108,7 +108,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {recentActivity.length > 0 ? (
               recentActivity.map((activity) => (
                 <div key={activity.id} className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <div className={`h-2 w-2 rounded-full ${
                       activity.type === 'registration' ? 'bg-green-500' : 
                       activity.type === 'update' ? 'bg-blue-500' : 'bg-purple-500'
