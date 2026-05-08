@@ -34,6 +34,7 @@ export const memberApi = {
       return res.data.map(mapMemberListItem); // map raw backend data to our frontend MemberListItem type using the mapper function, this ensures that the data we get from the backend is transformed into the format our UI expects, and allows us to keep our frontend types decoupled from the backend data structure
     } catch (error) {
       handleError(error, "Failed to fetch members");
+      throw error;
     }
   },
 
@@ -47,6 +48,7 @@ export const memberApi = {
       return mapMemberDetails(res.data);
     } catch (error) {
       handleError(error, "Failed to fetch member details");
+      throw error;
     }
   },
 
@@ -65,6 +67,7 @@ export const memberApi = {
       return mapMemberDetails(res.data);
     } catch (error) { // if the API call fails for any reason (network error, server error, validation error, etc.), we catch the error and pass it to our handleError function along with a fallback message "Failed to fetch member details". The handleError function will log the error details for debugging and throw a user-friendly error message that we can display in the UI. This ensures that we have consistent error handling across all our API calls and provides a better user experience when something goes wrong.
       handleError(error, "Failed to fetch member details");
+      throw error;
     }
   },
 
@@ -88,9 +91,15 @@ export const memberApi = {
        * 
        */
       const backendPayload = { // the backend expects the data in a specific format, so we create a new object that matches what the backend API expects. This allows us to keep our frontend types decoupled from the backend data structure, giving us flexibility to evolve our frontend models independently as needed. In this case, the backend wants the principal member's info under a "principal" key, the next of kin as a single object (not an array), and the dependants as an array.
-        principal: payload.principal, // backend expects the principal member's info under a "principal" key, so we take the principal data from our payload and put it under this key in the backendPayload object
-        nextOfKin: payload.nextOfKin, // backend wants this as a single object, not array
-        dependants: payload.dependants || [] // || 
+        principal: {
+          ...payload.principal,
+          id: undefined,
+        }, // backend expects the principal member's info under a "principal" key, so we take the principal data from our payload and put it under this key in the backendPayload object
+        nextOfKin: {
+          ...payload.nextOfKin,
+          id: undefined,
+        }, // backend wants this as a single object, not array
+        dependants: (payload.dependants || []).map(({ id, ...rest }) => rest), // remove client-side generated id from dependants
       };
 
       const res = await apiClient.post("/members/register", backendPayload); // backendPayload is the data we send to the backend API to create a new member, this will return a response object that contains the raw data from the backend about the newly created member
@@ -181,6 +190,7 @@ export const memberApi = {
       return mapMemberDetails(res.data);
     } catch (error) {
       handleError(error, "Failed to add dependant");
+      throw error;
     }
   },
 
@@ -195,6 +205,7 @@ export const memberApi = {
       );
     } catch (error) {
       handleError(error, "Failed to update dependant");
+      throw error;
     }
   },
 
@@ -209,6 +220,7 @@ export const memberApi = {
       return mapMemberDetails(res.data);
     } catch (error) {
       handleError(error, "Failed to delete dependant");
+      throw error;
     }
   },
 
@@ -222,6 +234,7 @@ export const memberApi = {
       return res.data;
     } catch (error) {
       handleError(error, "Sign up failed");
+      throw error;
     }
   },
 };

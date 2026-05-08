@@ -1,7 +1,11 @@
 import { useState, useCallback, useRef } from 'react';
-
+// -- useState is used to manage loading, error, and data states.
+// -- useCallback is used to memoize the execute and reset functions.
+// -- useRef is used to hold the latest versions of the apiCall, onSuccess, and onError functions without causing re-renders.
+// 
 /**
  * Common hook for API operations with consistent loading, error, and data handling
+ * 
  */
 export const useApiCall = <T,>(
   apiCall: () => Promise<T>,
@@ -9,10 +13,10 @@ export const useApiCall = <T,>(
   onError?: (error: Error) => void
 ) => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // const [error, setError] = useState<string | null>(null); 
   const [data, setData] = useState<T | null>(null);
 
-  const onSuccessRef = useRef(onSuccess);
+  const onSuccessRef = useRef(onSuccess); // u
   const onErrorRef = useRef(onError);
   const apiCallRef = useRef(apiCall);
 

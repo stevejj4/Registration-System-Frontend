@@ -1,27 +1,32 @@
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError } from "axios"; // our HTTP client library
 
 /**
  * Axios instance acts as the single source of HTTP configuration
+ * consistent base URL
+ * Easier to swap environments (dev, staging, prod) by changing one place
  */
-export const apiClient = axios.create({
-  baseURL: "http://localhost:9090/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
+export const apiClient = axios.create({ 
+  baseURL: "http://localhost:9090/api", 
+  headers: { // default headers for all requests. what are the headers? -- 
+    "Content-Type": "application/json", // 
+  }, 
 });
 
 /**
  * Global error handler
+ * catches all errors from API calls and provides consistent error messages to the UI
+ * throws user-friendly error messages based on error type (network, validation, server)
+ * logs detailed error information for debugging
  */
-export const handleError = (error: unknown, fallback: string): never => {
-  console.error('=== API Error Details ===');
-  console.error('Timestamp:', new Date().toISOString());
-  console.error('Fallback message:', fallback);
+export const handleError = (error: unknown, fallback: string): never => { // error: unknown allows us to catch any type of error, not just Axios errors, fallback is a generic message to use if we can't determine the error type, never return type indicates this function will always throw an error and never return a value (what is never return type? -- it tells TypeScript that this function will always throw an error and never return a value, which helps with type safety and control flow analysis in the rest of the codebase)
+  console.error('=== API Error Details ==='); // log the error details for debugging purposes, this will help us understand what went wrong when an API call fails, especially during development and troubleshooting
+  console.error('Timestamp:', new Date().toISOString()); // logs the exact time the error occurred for better debugging and correlation with backend logs, toI
+  console.error('Fallback message:', fallback); // logs the fallback message that will be used if we can't determine the error type, this helps us understand what the user will see when this error is thrown
   
-  if (axios.isAxiosError(error)) {
-    const err = error as AxiosError<any>;
-    
-    console.error('Request URL:', err.config?.url);
+  if (axios.isAxiosError(error)) { // checks if the error is an AxiosError, which means it came from an HTTP request made using our apiClient, this allows us to handle network errors and server responses in a consistent way e.g if the server is down, if the request was invalid, if the user is unauthorized, etc.
+    const err = error as AxiosError<any>; // type assertion to treat the error as an AxiosError with any response data, this allows us to access properties like err.response and err.config without TypeScript errors, since AxiosError is a specific type of error that has these properties
+    // what is type assertion? -- Type assertion is a way to tell TypeScript to treat a value as a specific type, even if TypeScript can't infer it on its own. It's like saying "I know better than you, TypeScript, this value is actually of this type". In this case, we're telling TypeScript that the error is an AxiosError with any response data, which allows us to access properties specific to Axios errors without TypeScript complaining about it.
+    console.error('Request URL:', err.config?.url); // 
     console.error('Request Method:', err.config?.method);
     console.error('Request Data:', err.config?.data);
     console.error('Response Status:', err.response?.status);
@@ -70,13 +75,20 @@ export const handleError = (error: unknown, fallback: string): never => {
   }
   
   // Non-Axios errors
-  if (error instanceof Error) {
-    console.error('Application error:', error.message);
-    console.error('Stack trace:', error.stack);
+  /**
+ * Check backend connectivity
+ * catches error that are non Axios related (e.g. programming errors, unexpected exceptions)
+ * logs the error details for debugging
+ * throws a generic error message to avoid exposing sensitive information 
+ * ensure non network errors are also handled gracefully in the UI
+ */
+  if (error instanceof Error) { // checks if the error is a standard JavaScript Error object, which means it's likely a programming error or an unexpected exception that occurred in our code, this allows us to catch and log these types of errors as well, ensuring that all errors are handled gracefully and logged for debugging
+    console.error('Application error:', error.message); // application error is a non-network error that occurred in our code, this could be a bug, an unexpected exception, or any error that is not related to an HTTP request, logging the error message helps us understand what went wrong in our code
+    console.error('Stack trace:', error.stack);  // stack 
     throw new Error(error.message || fallback);
   }
   
-  console.error('Unknown error type:', typeof error);
+  console.error('Unknown error type:', typeof error); // safety net for unexpected cases 
   throw new Error(fallback);
 };
 
@@ -93,3 +105,7 @@ export const checkBackendConnectivity = async (): Promise<boolean> => {
     return false;
   }
 };
+
+
+// right now all error are logged in the console
+// for production, we could integrate with a service azure monitoring to capture errors in a centralized dashboard for better monitoring and alerting
