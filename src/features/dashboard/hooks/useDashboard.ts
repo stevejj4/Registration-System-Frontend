@@ -3,6 +3,7 @@ import { memberApi } from '@/api/memberApi';
 import { MemberListItem } from '@/types/member';
 import { useApiCall } from '@/hooks/useApiCall';
 
+//  Dashboard statistics and recent activity types
 export interface DashboardStats {
   totalMembers: number;
   newThisMonth: number;
@@ -10,13 +11,14 @@ export interface DashboardStats {
   pending: number;
 }
 
+// Recent activity type
 export interface RecentActivity {
   id: string;
   type: 'registration' | 'update' | 'group';
   description: string;
   timestamp: string;
 }
-
+// Custom hook to manage dashboard data
 export const useDashboard = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
@@ -24,7 +26,7 @@ export const useDashboard = () => {
     activeGroups: 0,
     pending: 0,
   });
-
+ // 
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
 
   const { loading: statsLoading, error: statsError, execute: fetchStats } = useApiCall(

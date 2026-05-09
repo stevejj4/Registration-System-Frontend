@@ -1,5 +1,5 @@
 /**
- * Utility functions for the Member Hub application
+ * Utility functions for the Member application
  */
 
 import { MemberListItem } from '@/types/member';
