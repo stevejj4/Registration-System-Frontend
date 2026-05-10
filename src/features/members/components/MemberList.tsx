@@ -11,10 +11,14 @@ interface Props {
   onSelectMember: (id: string) => void;
   selectedId?: string;
 }
-
+/**
+ * MemberList component displays a searchable and interactive list of members. It fetches member data from the API, allows users to search by name, group, or phone number, and highlights the selected member. The component also handles loading and error states gracefully, providing feedback to the user.
+ * - onSelectMember: Callback function triggered when a member is selected, passing the member's ID.
+ * - selectedId: Optional prop to indicate which member is currently selected, allowing for UI highlighting.
+ */
 export default function MemberList({ onSelectMember, selectedId }: Props) {
   const [members, setMembers] = useState<MemberListItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // Local state for search input
 
   const { loading, error, execute: fetchAll } = useApiCall(
     () => memberApi.getAll(),
@@ -39,7 +43,7 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
             placeholder="Search by name, group, or phone..."
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm placeholder:text-gray-400"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)} // Update search term on input change
           />
         </div>
         <button 
@@ -78,10 +82,10 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
                 <td colSpan={7} className="px-6 py-12 text-center text-gray-400 font-medium">No members found</td>
               </tr>
             ) : (
-              filteredMembers.map((member) => (
+              filteredMembers.map((member) => ( // Map over filtered members to display in the table
                 <motion.tr
                   key={member.id}
-                  initial={{ opacity: 0 }}
+                  initial={{ opacity: 0 }} // Animate row appearance
                   animate={{ opacity: 1 }}
                   whileHover={{ backgroundColor: "#f9fafb" }}
                   className={`border-b border-gray-100 cursor-pointer transition-colors ${
@@ -93,7 +97,7 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
                   <td className="px-6 py-4 text-sm text-gray-900">{member.nationalID}</td>
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">
-                      {member.firstName} {member.lastName}
+                      {member.firstName} {member.lastName} // Display full name by combining first and last name fields
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{member.registrationDate}</td>
