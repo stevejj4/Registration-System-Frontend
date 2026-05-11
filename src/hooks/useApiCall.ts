@@ -47,11 +47,11 @@ export const useApiCall = <T,>(
     }
   }, []); // Empty dependency array - stable function reference
 
-  const reset = useCallback(() => {
+  const reset = useCallback(() => { // reset function to clear data and error states, and set loading to false, allowing components to reset the state of the API call when needed (e.g., when unmounting or before making a new call).
     setData(null);
     setError(null);
     setLoading(false);
-  }, []);
+  }, []); // Empty dependency array - stable function reference
 
   return { execute, loading, error, data, setData, reset };
 };
