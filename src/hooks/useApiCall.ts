@@ -5,10 +5,16 @@ import { useState, useCallback, useRef } from 'react';
 // 
 /**
  * Common hook for API operations with consistent loading, error, and data handling
- * 
+ * - apiCall: The asynchronous function that performs the API request and returns a promise.
+ * - onSuccess: Optional callback function to handle successful API responses.
+ * - onError: Optional callback function to handle API errors.
  */
-export const useApiCall = <T,>(
-  apiCall: () => Promise<T>,
+
+/**
+ * manage logic and state (loading, error, data) and expose them to components.
+ */
+export const useApiCall = <T,>( 
+  apiCall: () => Promise<T>, // apiCall is a function that returns a promise of type T, which represents the expected data structure of the API response. This allows the hook to be flexible and work with any API endpoint that returns data in the shape of T.
   onSuccess?: (data: T) => void,
   onError?: (error: Error) => void
 ) => {
@@ -16,7 +22,7 @@ export const useApiCall = <T,>(
   const [error, setError] = useState<string | null>(null); // const [error, setError] = useState<string | null>(null); 
   const [data, setData] = useState<T | null>(null);
 
-  const onSuccessRef = useRef(onSuccess); // u
+  const onSuccessRef = useRef(onSuccess); // useRef is used to hold the latest version of the onSuccess function without causing re-renders.
   const onErrorRef = useRef(onError);
   const apiCallRef = useRef(apiCall);
 
