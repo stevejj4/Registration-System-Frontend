@@ -4,6 +4,8 @@ import { checkBackendConnectivity } from "@/api/client";
 import type { MemberDetails, Dependant, NextOfKin } from "@/types/member";
 import { ArrowLeft, Edit3, Save, X, Plus, Trash2, User, Users, Heart, ShieldCheck, Mail, Phone, Calendar, Hash, Briefcase } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
+import { Button } from "@/components/ui/Button";
 
 interface Props {
   memberId: string;
@@ -11,6 +13,19 @@ interface Props {
 }
 
 type TabType = "principal" | "nok" | "dependants";
+
+/**
+ * MemberDetails component displays detailed information about a specific member, including their principal details, next of kin, and dependants.
+ * It allows editing of principal and next of kin information, as well as adding, editing, and deleting dependants. 
+ * The component also handles API interactions for updating member data and provides user feedback through toast notifications.
+ * Key features: -- 
+ * - Tabbed interface for organizing member information
+ * - Edit mode with form validation for principal and next of kin details\
+ * - Dependant management with add, edit, and delete functionality
+ * - API connectivity checks before performing updates
+ * - User feedback through toast notifications for successful updates and error handling
+ * This component is a central part of the member management system, providing a comprehensive view and management interface for individual members.
+ */
 
 export default function MemberDetails({ memberId, onBack }: Props) {
   const [member, setMember] = useState<MemberDetails | null>(null);
@@ -21,6 +36,8 @@ export default function MemberDetails({ memberId, onBack }: Props) {
   const [toast, setToast] = useState<string | null>(null);
   const [editingDependant, setEditingDependant] = useState<string | null>(null);
   const [dependantFormData, setDependantFormData] = useState<Partial<Dependant>>({});
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmType, setConfirmType] = useState<"member" | "nok" | null>(null);
 
   const fetchMember = async () => {
     try {
@@ -76,7 +93,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
           return;
         }
         // Update next of kin info
-        await memberApi.updateNextOfKin(member.id, formData);
+        await memberApi.patchNextOfKin(member.id, formData);
         showToast("Next of Kin Updated");
       }
       setEditMode(false);
@@ -112,6 +129,48 @@ export default function MemberDetails({ memberId, onBack }: Props) {
         phoneNumber: member?.nextOfKin?.phoneNumber || "",
         dateOfBirth: member?.nextOfKin?.dateOfBirth || "",
       });
+    }
+  };
+
+  const openDeleteMemberModal = () => {
+    setConfirmType("member");
+    setConfirmOpen(true);
+  };
+
+  const openDeleteNokModal = () => {
+    setConfirmType("nok");
+    setConfirmOpen(true);
+  };
+
+  const handleConfirm = async () => {
+    if (!member || !confirmType) return;
+
+    try {
+      const isBackendConnected = await checkBackendConnectivity();
+      if (!isBackendConnected) {
+        throw new Error('Server is currently unavailable. Please try again later.');
+      }
+
+      if (confirmType === "member") {
+        await memberApi.deleteMember(member.id);
+        showToast("Member Deleted");
+        setConfirmOpen(false);
+        onBack();
+        return;
+      }
+
+      if (confirmType === "nok") {
+        await memberApi.deleteNextOfKin(member.id);
+        showToast("Next of Kin Deleted");
+        setConfirmOpen(false);
+        fetchMember();
+        return;
+      }
+    } catch (error) {
+      console.error("Delete action failed:", error);
+      const errorMessage = error instanceof Error ? error.message : "Delete failed";
+      showToast(errorMessage);
+      setConfirmOpen(false);
     }
   };
 
@@ -216,13 +275,10 @@ export default function MemberDetails({ memberId, onBack }: Props) {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <button
-          onClick={onBack}
-          className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
-        >
+        <Button onClick={onBack} variant="outline" size="md" className="flex items-center mb-4">
           <ArrowLeft className="w-5 h-5 mr-2" />
           Back to List
-        </button>
+        </Button>
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
@@ -231,13 +287,16 @@ export default function MemberDetails({ memberId, onBack }: Props) {
             <p className="text-gray-600">ID: {member.principal.nationalID}</p>
           </div>
           {!editMode && (
-            <button
-              onClick={handleEdit}
-              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-            >
-              <Edit3 className="w-4 h-4 mr-2" />
-              Edit
-            </button>
+            <div className="flex space-x-2">
+              <Button onClick={handleEdit} variant="primary" size="md">
+                <Edit3 className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+              <Button onClick={openDeleteMemberModal} variant="danger" size="md">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Member
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -378,19 +437,13 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                   </div>
                 </div>
                 <div className="flex justify-end space-x-3 mt-6">
-                  <button
-                    onClick={handleCancel}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
+                  <Button onClick={handleCancel} variant="outline" size="md">
                     Cancel
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                  >
+                  </Button>
+                  <Button onClick={handleSave} variant="primary" size="md">
                     <Save className="w-4 h-4 mr-2 inline" />
                     Save
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -500,19 +553,13 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                   </div>
                 </div>
                 <div className="flex justify-end space-x-3 mt-6">
-                  <button
-                    onClick={handleCancel}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
+                  <Button onClick={handleCancel} variant="outline" size="md">
                     Cancel
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                  >
+                  </Button>
+                  <Button onClick={handleSave} variant="primary" size="md">
                     <Save className="w-4 h-4 mr-2 inline" />
                     Save
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -545,10 +592,17 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    No next of kin information available
+                  <></>
+                )}
+                {member.nextOfKin && !editMode && (
+                  <div className="mt-4 flex justify-end">
+                    <Button onClick={openDeleteNokModal} variant="danger" size="sm">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Next of Kin
+                    </Button>
                   </div>
                 )}
+                
               </div>
             )}
           </div>
@@ -558,7 +612,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Dependants</h2>
-              <button
+              <Button
                 onClick={() => {
                   // Start with empty form data for user to fill in
                   setEditingDependant("new");
@@ -571,11 +625,13 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     dateOfBirth: "",
                   });
                 }}
-                className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                variant="primary"
+                size="md"
+                className="flex items-center"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Dependant
-              </button>
+              </Button>
             </div>
             {member.dependants.length > 0 ? (
               <div className="space-y-4">
@@ -651,18 +707,12 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                           </div>
                         </div>
                         <div className="flex justify-end space-x-3">
-                          <button
-                            onClick={handleCancelEditDependant}
-                            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                          >
+                          <Button onClick={handleCancelEditDependant} variant="outline" size="md">
                             Cancel
-                          </button>
-                          <button
-                            onClick={() => handleSaveDependant(dependant.id!)}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                          >
+                          </Button>
+                          <Button onClick={() => handleSaveDependant(dependant.id!)} variant="primary" size="md">
                             Save
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ) : (
@@ -691,18 +741,12 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                           </div>
                         </div>
                         <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleEditDependant(dependant)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                          >
+                          <Button onClick={() => handleEditDependant(dependant)} variant="outline" size="sm">
                             <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteDependant(dependant.id!)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                          >
+                          </Button>
+                          <Button onClick={() => handleDeleteDependant(dependant.id!)} variant="danger" size="sm">
                             <Trash2 className="w-4 h-4" />
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -788,18 +832,12 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     </div>
                   </div>
                   <div className="flex justify-end space-x-3">
-                    <button
-                      onClick={handleCancelEditDependant}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
+                    <Button onClick={handleCancelEditDependant} variant="outline" size="md">
                       Cancel
-                    </button>
-                    <button
-                      onClick={() => handleAddDependant(dependantFormData as Omit<Dependant, "id">)}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                    >
+                    </Button>
+                    <Button onClick={() => handleAddDependant(dependantFormData as Omit<Dependant, "id">)} variant="primary" size="md">
                       Add Dependant
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -807,6 +845,21 @@ export default function MemberDetails({ memberId, onBack }: Props) {
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmOpen}
+        title={confirmType === "member" ? "Delete Member" : "Delete Next of Kin"}
+        message={
+          confirmType === "member"
+            ? "Deleting this principal member will also remove their next of kin and dependants. This action cannot be undone. Are you sure?"
+            : "Delete the next of kin for this member? This cannot be undone."
+        }
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirmOpen(false)}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
 
       {/* Toast Notification */}
       <AnimatePresence>

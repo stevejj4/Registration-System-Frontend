@@ -5,7 +5,7 @@ import TextInput from "@/components/ui/TextInput";
 import SelectInput from "@/components/ui/SelectInput";
 import DateInput from "@/components/ui/DateInput";
 
-interface Props {
+interface Props { // Consider renaming to NextOfKinFormProps for clarity
   nextOfKin: NextOfKin;
   onChange: (nextOfKin: NextOfKin) => void;
   errors: {

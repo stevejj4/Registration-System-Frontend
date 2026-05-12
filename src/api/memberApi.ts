@@ -223,6 +223,29 @@ export const memberApi = {
     }
   },
 
+  // Delete next of kin for a principal member
+  async deleteNextOfKin(principalId: string): Promise<MemberDetails> {
+    try {
+      const res = await apiClient.delete(
+        `/members/${principalId}/next-of-kin`
+      );
+      return mapMemberDetails(res.data);
+    } catch (error) {
+      handleError(error, "Failed to delete next of kin");
+      throw error;
+    }
+  },
+
+  // Delete a principal member (backend should cascade-delete dependants and next of kin)
+  async deleteMember(id: string): Promise<void> {
+    try {
+      await apiClient.delete(`/members/${id}`);
+    } catch (error) {
+      handleError(error, "Failed to delete member");
+      throw error;
+    }
+  },
+
   /**
    * AUTH
    */
