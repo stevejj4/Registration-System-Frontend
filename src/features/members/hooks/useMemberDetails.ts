@@ -18,7 +18,7 @@ export const useMemberDetails = (memberId: string) => {
     setError(null);
     
     try {
-      const data = await memberApi.getByNationalId(memberId);
+      const data = await memberApi.getById(memberId);
       setMember(data);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch member details');

@@ -14,7 +14,7 @@ export const useMembers = () => {
 
   useEffect(() => {
     refetch();
-  }, [refetch]);
+  }, []);
 
   return {
     members,

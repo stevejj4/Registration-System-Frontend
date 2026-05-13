@@ -29,43 +29,26 @@ export const useDashboard = () => {
  // 
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
 
-  const { loading: statsLoading, error: statsError, execute: fetchStats } = useApiCall(
+  const { loading, error, execute: fetchMembers } = useApiCall(
     async () => {
       const members = await memberApi.getAll();
-      
-      // Calculate real statistics
+
+      // Calculate statistics
       const totalMembers = members.length;
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
-      
+
       const newThisMonth = members.filter(member => {
         const regDate = new Date(member.registrationDate);
         return regDate.getMonth() === currentMonth && regDate.getFullYear() === currentYear;
       }).length;
 
-      // Get unique groups
       const groups = new Set(members.map(member => member.groupName));
       const activeGroups = groups.size;
 
-      // For now, pending is 0 (could be calculated from a real status field)
       const pending = 0;
 
-      return {
-        totalMembers,
-        newThisMonth,
-        activeGroups,
-        pending,
-      };
-    },
-    (data: DashboardStats) => setStats(data),
-    (err) => console.error('Failed to fetch dashboard stats:', err)
-  );
-
-  const { loading: activityLoading, error: activityError, execute: fetchActivity } = useApiCall(
-    async () => {
-      const members = await memberApi.getAll();
-      
-      // Create recent activity from member data
+      // Build recent activity
       const activities: RecentActivity[] = members
         .slice(-5)
         .reverse()
@@ -76,27 +59,36 @@ export const useDashboard = () => {
           timestamp: member.registrationDate,
         }));
 
-      return activities;
+      return {
+        stats: {
+          totalMembers,
+          newThisMonth,
+          activeGroups,
+          pending,
+        },
+        activities,
+      };
     },
-    (data: RecentActivity[]) => setRecentActivity(data),
-    (err) => console.error('Failed to fetch recent activity:', err)
+    (data: { stats: DashboardStats; activities: RecentActivity[] }) => {
+      setStats(data.stats);
+      setRecentActivity(data.activities);
+    },
+    (err) => console.error('Failed to fetch dashboard data:', err)
   );
 
   useEffect(() => {
-    fetchStats();
-    fetchActivity();
+    fetchMembers();
   }, []); // Empty dependency array - run only on mount
 
   const refresh = () => {
-    fetchStats();
-    fetchActivity();
+    fetchMembers();
   };
 
   return {
     stats,
     recentActivity,
-    loading: statsLoading || activityLoading,
-    error: statsError || activityError,
+    loading,
+    error,
     refresh,
   };
 };

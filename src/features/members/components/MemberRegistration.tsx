@@ -114,7 +114,7 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     setLoading(true);
     setErrors(initialValidationError);
 
-    const payload: RegisterMemberPayload = {
+    const payload: RegisterMemberPayload = { // Ensure payload structure matches what the API expects
       principal,
       nextOfKin,
       dependants,

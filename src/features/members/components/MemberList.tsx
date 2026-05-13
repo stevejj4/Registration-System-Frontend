@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { memberApi } from "@/api/memberApi";
+// memberApi not used here; using `useMembers` hook instead
 import { MemberListItem } from "@/types/member";
 import { Search, RefreshCw, Edit2 } from "lucide-react";
 import { motion } from "motion/react";
 import { filterMembers } from "@/utils/helpers";
 import { useMembers } from '@/features/members';
-import { useApiCall } from "@/hooks/useApiCall";
 
 interface Props {
   onSelectMember: (id: string) => void;
@@ -17,18 +16,13 @@ interface Props {
  * - selectedId: Optional prop to indicate which member is currently selected, allowing for UI highlighting.
  */
 export default function MemberList({ onSelectMember, selectedId }: Props) {
-  const [members, setMembers] = useState<MemberListItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState(""); // Local state for search input
-
-  const { loading, error, execute: fetchAll } = useApiCall(
-    () => memberApi.getAll(),
-    (data: MemberListItem[]) => setMembers(data),
-    (err) => console.error('Failed to fetch members:', err)
-  );
+  const { members, loading, error, refetch } = useMembers();
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    // Ensure members are fetched on mount (useMembers already triggers a fetch), but keep for safety if refetch needed
+    if (refetch) refetch();
+  }, []);
 
   const filteredMembers = filterMembers(members, searchTerm);
 
@@ -47,7 +41,7 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
           />
         </div>
         <button 
-          onClick={fetchAll}
+          onClick={() => refetch && refetch()}
           className="p-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors shadow-sm"
         >
           <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
@@ -93,11 +87,11 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
                   }`}
                   onClick={() => onSelectMember(member.id)}
                 >
-                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">{member.id}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">{member.id}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{member.nationalID}</td>
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">
-                      {member.firstName} {member.lastName} // Display full name by combining first and last name fields
+                      {member.firstName} {member.lastName}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{member.registrationDate}</td>

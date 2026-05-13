@@ -7,7 +7,7 @@ import axios, { AxiosError } from "axios"; // our HTTP client library
  */
 export const apiClient = axios.create({ 
   baseURL: "http://localhost:9090/api", 
-  headers: { // default headers for all requests. what are the headers? -- 
+  headers: { // default headers for all requests.
     "Content-Type": "application/json", // 
   }, 
 });
