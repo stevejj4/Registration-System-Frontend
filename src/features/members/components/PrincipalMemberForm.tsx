@@ -3,6 +3,8 @@ import { User } from "lucide-react";
 import { PrincipalMember } from "@/types/member";
 import TextInput from "@/components/ui/TextInput";
 import DateInput from "@/components/ui/DateInput";
+import SelectInput from "@/components/ui/SelectInput";
+import { displayTextToGender, genderToDisplayText } from "@/utils/helpers";
 
 interface Props {
   principal: PrincipalMember;
@@ -11,6 +13,7 @@ interface Props {
     principalFirstName: string | null;
     principalLastName: string | null;
     principalNationalID: string | null;
+    principalGender: string | null;
     principalPhoneNumber: string | null;
     principalDateOfBirth: string | null;
     principalGroupName: string | null;
@@ -50,6 +53,21 @@ export default function PrincipalMemberForm({ principal, onChange, errors }: Pro
           onChange={(value) => onChange({ ...principal, nationalID: value })}
           placeholder="Enter national ID number"
           error={errors.principalNationalID}
+        />
+
+        <SelectInput
+          label="Gender"
+          value={genderToDisplayText(principal.gender)}
+          onChange={(displayValue) => {
+            const genderValue = displayTextToGender(displayValue);
+            onChange({ ...principal, gender: genderValue });
+          }}
+          options={[
+            { value: "Male", label: "Male" },
+            { value: "Female", label: "Female" },
+            { value: "Other", label: "Other" },
+          ]}
+          error={errors.principalGender}
         />
 
         <TextInput

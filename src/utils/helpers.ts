@@ -1,113 +1,228 @@
-/**
- * Utility functions for the Member application
- */
+// src/utils/memberUtils.ts
 
-import { MemberListItem } from '@/types/member';
+import type { MemberListItemDTO } from "@/types/member";
+import type { GenderType, RelationshipType } from "@/types/enums";
 
-/**
- * Format a date string to a more readable format
- */
-export const formatDate = (dateString: string): string => {
-  if (!dateString) return 'N/A';
-  
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
+/* -------------------------------------------------------------------------- */
+/*                                DATE FORMAT                                 */
+/* -------------------------------------------------------------------------- */
+
+export const formatDate = (dateString?: string): string => {
+  if (!dateString) return "N/A";
+
+  const date = new Date(dateString);
+
+  if (isNaN(date.getTime())) {
     return dateString;
   }
+
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 };
 
-/**
- * Format a phone number for display
- */
-export const formatPhoneNumber = (phone: string): string => {
-  if (!phone) return 'N/A';
-  
-  // Basic formatting for Kenyan phone numbers
-  if (phone.startsWith('07') && phone.length === 10) {
-    return `${phone.slice(0, 4)} ${phone.slice(4, 7)} ${phone.slice(7)}`;
+/* -------------------------------------------------------------------------- */
+/*                              PHONE FORMATTING                              */
+/* -------------------------------------------------------------------------- */
+
+export const formatPhoneNumber = (
+  phone?: string
+): string => {
+  if (!phone) return "N/A";
+
+  // Kenyan format: 07XX XXX XXX
+  if (phone.startsWith("07") && phone.length === 10) {
+    return `${phone.slice(0, 4)} ${phone.slice(
+      4,
+      7
+    )} ${phone.slice(7)}`;
   }
-  
+
   return phone;
 };
 
-/**
- * Validate Kenyan national ID format
- */
-export const validateNationalId = (id: string): boolean => {
-  // Basic validation - should be 8 digits
-  return /^\d{8}$/.test(id);
+/* -------------------------------------------------------------------------- */
+/*                                VALIDATIONS                                 */
+/* -------------------------------------------------------------------------- */
+
+export const validateNationalId = (
+  id?: string
+): boolean => {
+  if (!id) return false;
+
+  // Kenyan ID: 7–8 digits (some systems vary)
+  return /^\d{7,8}$/.test(id);
 };
 
-/**
- * Validate phone number format
- */
-export const validatePhoneNumber = (phone: string): boolean => {
-  // Basic validation for Kenyan phone numbers
+export const validatePhoneNumber = (
+  phone?: string
+): boolean => {
+  if (!phone) return false;
+
   return /^07\d{8}$/.test(phone);
 };
 
-/**
- * Calculate age from date of birth
- */
-export const calculateAge = (dateOfBirth: string): number => {
+/* -------------------------------------------------------------------------- */
+/*                                 AGE LOGIC                                  */
+/* -------------------------------------------------------------------------- */
+
+export const calculateAge = (
+  dateOfBirth?: string
+): number => {
   if (!dateOfBirth) return 0;
-  
-  try {
-    const birth = new Date(dateOfBirth);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    
-    return age;
-  } catch {
+
+  const birth = new Date(dateOfBirth);
+
+  if (isNaN(birth.getTime())) {
     return 0;
   }
+
+  const today = new Date();
+
+  let age =
+    today.getFullYear() -
+    birth.getFullYear();
+
+  const monthDiff =
+    today.getMonth() -
+    birth.getMonth();
+
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 &&
+      today.getDate() < birth.getDate())
+  ) {
+    age--;
+  }
+
+  return age;
 };
 
-/**
- * Format member full name from first and last name
- */
-export const formatMemberName = (member: { firstName?: string; lastName?: string }): string => {
-  return `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'N/A';
+/* -------------------------------------------------------------------------- */
+/*                               NAME HELPERS                                 */
+/* -------------------------------------------------------------------------- */
+
+export const formatMemberName = (member: {
+  firstName?: string;
+  lastName?: string;
+}): string => {
+  return (
+    `${member.firstName ?? ""} ${
+      member.lastName ?? ""
+    }`.trim() || "N/A"
+  );
 };
 
-/**
- * Format member display name with national ID
- */
-export const formatMemberDisplay = (member: MemberListItem): string => {
+export const formatMemberDisplay = (
+  member: MemberListItemDTO
+): string => {
   return `${member.firstName} ${member.lastName} (${member.nationalID})`;
 };
 
-/**
- * Sort members by name using normalized structure
- */
-export const sortMembersByName = (members: MemberListItem[]): MemberListItem[] => {
-  return [...members].sort((a, b) => 
-    `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`) || 0
+/* -------------------------------------------------------------------------- */
+/*                               SORTING LOGIC                                */
+/* -------------------------------------------------------------------------- */
+
+export const sortMembersByName = (
+  members: MemberListItemDTO[]
+): MemberListItemDTO[] => {
+  return [...members].sort((a, b) =>
+    `${a.firstName} ${a.lastName}`.localeCompare(
+      `${b.firstName} ${b.lastName}`
+    )
   );
 };
 
-/**
- * Filter members by search term using normalized structure
- */
-export const filterMembers = (members: MemberListItem[], searchTerm: string): MemberListItem[] => {
+/* -------------------------------------------------------------------------- */
+/*                               FILTER LOGIC                                 */
+/* -------------------------------------------------------------------------- */
+
+export const filterMembers = (
+  members: MemberListItemDTO[],
+  searchTerm: string
+): MemberListItemDTO[] => {
   if (!searchTerm.trim()) return members;
-  
+
   const term = searchTerm.toLowerCase();
-  return members.filter(member => 
-    `${member.firstName} ${member.lastName}`.toLowerCase().includes(term) ||
-    member.nationalID?.toLowerCase().includes(term) ||
-    member.phoneNumber?.toLowerCase().includes(term) ||
-    member.groupName?.toLowerCase().includes(term)
-  );
+
+  return members.filter((member) => {
+    return (
+      `${member.firstName} ${member.lastName}`
+        .toLowerCase()
+        .includes(term) ||
+      member.nationalID
+        .toLowerCase()
+        .includes(term) ||
+      member.phoneNumber
+        .toLowerCase()
+        .includes(term) ||
+      member.groupName
+        .toLowerCase()
+        .includes(term)
+    );
+  });
+};
+
+/* -------------------------------------------------------------------------- */
+/*                            ENUM DISPLAY HELPERS                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Converts GenderType (MALE, FEMALE, OTHER) to display text (Male, Female, Other)
+ */
+export const genderToDisplayText = (gender: GenderType | string): string => {
+  const normalized = String(gender).toUpperCase();
+  const mapping: Record<string, string> = {
+    MALE: "Male",
+    FEMALE: "Female",
+    OTHER: "Other",
+  };
+  return mapping[normalized] || "Unknown";
+};
+
+/**
+ * Converts display text (Male, Female, Other) to GenderType (MALE, FEMALE, OTHER)
+ */
+export const displayTextToGender = (text: string): GenderType => {
+  const normalized = text.toUpperCase();
+  const mapping: Record<string, GenderType> = {
+    MALE: "MALE",
+    FEMALE: "FEMALE",
+    OTHER: "OTHER",
+  };
+  return mapping[normalized] || "OTHER";
+};
+
+/**
+ * Converts RelationshipType to display text
+ * SPOUSE -> Spouse, SON -> Son, DAUGHTER -> Daughter, PARENT -> Parent, OTHER -> Other
+ */
+export const relationshipToDisplayText = (relationship: RelationshipType | string): string => {
+  const normalized = String(relationship).toUpperCase();
+  const mapping: Record<string, string> = {
+    SPOUSE: "Spouse",
+    SON: "Son",
+    DAUGHTER: "Daughter",
+    PARENT: "Parent",
+    OTHER: "Other",
+  };
+  return mapping[normalized] || "Unknown";
+};
+
+/**
+ * Converts display text to RelationshipType
+ * Spouse -> SPOUSE, Son -> SON, Daughter -> DAUGHTER, Parent -> PARENT, Other -> OTHER
+ */
+export const displayTextToRelationship = (text: string): RelationshipType => {
+  const normalized = text.toUpperCase();
+  const mapping: Record<string, RelationshipType> = {
+    SPOUSE: "SPOUSE",
+    SON: "SON",
+    DAUGHTER: "DAUGHTER",
+    PARENT: "PARENT",
+    OTHER: "OTHER",
+  };
+  return mapping[normalized] || "OTHER";
 };

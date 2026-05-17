@@ -1,39 +1,43 @@
-import { PrincipalMember, NextOfKin, Dependant } from "@/types/member";
+import { DependantDTO, NextOfKinDTO, PrincipalMemberDTO, DependantFormData } from "@/types/member";
 import { ERROR_MESSAGES, VALIDATION_RULES } from "@/constants";
 
 export interface ValidationError {
-  principalFirstName: string | null;
+  principalFirstName: string | null; // null means no error, string means error message
   principalLastName: string | null;
   principalNationalID: string | null;
+  principalGender: string | null;
   principalPhoneNumber: string | null;
   principalDateOfBirth: string | null;
   principalGroupName: string | null;
   nextOfKinFirstName: string | null;
   nextOfKinLastName: string | null;
   nextOfKinRelationship: string | null;
+  nextOfKinGender: string | null;
   nextOfKinIdNumber: string | null;
   nextOfKinPhoneNumber: string | null;
   nextOfKinDateOfBirth: string | null;
-  general: string | null;
+  general: string | null; // for errors that don't fit into specific fields (e.g. dependant errors) 
 }
 
 export const initialValidationError: ValidationError = {
   principalFirstName: null,
   principalLastName: null,
   principalNationalID: null,
+  principalGender: null,
   principalPhoneNumber: null,
   principalDateOfBirth: null,
   principalGroupName: null,
   nextOfKinFirstName: null,
   nextOfKinLastName: null,
   nextOfKinRelationship: null,
+  nextOfKinGender: null,
   nextOfKinIdNumber: null,
   nextOfKinPhoneNumber: null,
   nextOfKinDateOfBirth: null,
   general: null,
 };
 
-export function validatePrincipal(principal: PrincipalMember, errors: ValidationError): ValidationError {
+export function validatePrincipal(principal: PrincipalMemberDTO, errors: ValidationError): ValidationError {
   const newErrors = { ...errors };
   let isValid = true;
 
@@ -97,10 +101,21 @@ export function validatePrincipal(principal: PrincipalMember, errors: Validation
     newErrors.principalGroupName = null;
   }
 
+  // Gender validation
+  if (!principal.gender.trim()) {
+    newErrors.principalGender = "Gender is required";
+    isValid = false;
+  } else if (!["MALE", "FEMALE", "OTHER"].includes(principal.gender)) {
+    newErrors.principalGender = "Invalid gender value";
+    isValid = false;
+  } else {
+    newErrors.principalGender = null;
+  }
+
   return newErrors;
 }
 
-export function validateNextOfKin(nextOfKin: NextOfKin, errors: ValidationError): ValidationError {
+export function validateNextOfKin(nextOfKin: NextOfKinDTO, errors: ValidationError): ValidationError {
   const newErrors = { ...errors };
   let isValid = true;
 
@@ -161,10 +176,21 @@ export function validateNextOfKin(nextOfKin: NextOfKin, errors: ValidationError)
     newErrors.nextOfKinDateOfBirth = null;
   }
 
+  // Gender validation
+  if (!nextOfKin.gender.trim()) {
+    newErrors.nextOfKinGender = "Gender is required";
+    isValid = false;
+  } else if (!["MALE", "FEMALE", "OTHER"].includes(nextOfKin.gender)) {
+    newErrors.nextOfKinGender = "Invalid gender value";
+    isValid = false;
+  } else {
+    newErrors.nextOfKinGender = null;
+  }
+
   return newErrors;
 }
 
-export function validateDependants(dependants: Dependant[], errors: ValidationError): ValidationError {
+export function validateDependants(dependants: DependantDTO[], errors: ValidationError): ValidationError {
   const newErrors = { ...errors };
 
   // Clear general error initially

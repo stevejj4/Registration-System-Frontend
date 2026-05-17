@@ -7,6 +7,7 @@ import { Dependant } from "@/types/member";
 import TextInput from "@/components/ui/TextInput";
 import SelectInput from "@/components/ui/SelectInput";
 import DateInput from "@/components/ui/DateInput";
+import { displayTextToGender, genderToDisplayText, displayTextToRelationship, relationshipToDisplayText } from "@/utils/helpers";
 
 interface Props {
   dependants: Dependant[];
@@ -31,8 +32,7 @@ const relationshipOptions = [
   { value: "Daughter", label: "Daughter" },
   { value: "Spouse", label: "Spouse" },
   { value: "Parent", label: "Parent" },
-  { value: "Sibling", label: "Sibling" },
-  { value: "Guardian", label: "Guardian" },
+  { value: "Other", label: "Other" },
 ];
 
 const genderOptions = [
@@ -332,28 +332,30 @@ export default function DependantsForm({
 
                 <SelectInput
                   label="Relationship"
-                  value={dependant.relationship || ""}
-                  onChange={(value) =>
+                  value={relationshipToDisplayText(dependant.relationship || "")}
+                  onChange={(displayValue) => {
+                    const relationshipValue = displayTextToRelationship(displayValue);
                     updateDependant(
                       dependant.id,
                       "relationship",
-                      value
-                    )
-                  }
+                      relationshipValue
+                    );
+                  }}
                   options={relationshipOptions}
                   error={dependantError.relationship}
                 />
 
                 <SelectInput
                   label="Gender"
-                  value={dependant.gender || ""}
-                  onChange={(value) =>
+                  value={genderToDisplayText(dependant.gender || "")}
+                  onChange={(displayValue) => {
+                    const genderValue = displayTextToGender(displayValue);
                     updateDependant(
                       dependant.id,
                       "gender",
-                      value
-                    )
-                  }
+                      genderValue
+                    );
+                  }}
                   options={genderOptions}
                   error={dependantError.gender}
                 />

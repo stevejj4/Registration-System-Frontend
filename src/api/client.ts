@@ -1,4 +1,5 @@
-import axios, { AxiosError } from "axios"; // our HTTP client library
+import axios, { AxiosError } from 'axios'; // our HTTP client library
+import type { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 
 /**
  * Axios instance acts as the single source of HTTP configuration
@@ -11,6 +12,54 @@ export const apiClient = axios.create({
     "Content-Type": "application/json", // 
   }, 
 });
+
+// Token storage key used by auth provider
+const TOKEN_KEY = 'auth_token';
+
+/**
+ * Helper to set/remove token in localStorage and keep axios interceptor working
+ */
+export const setAuthToken = (token?: string) => {
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+  }
+};
+
+// Attach Authorization header if token exists
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  try {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) {
+      // Ensure headers object exists and set Authorization in a type-safe way
+      config.headers = config.headers ?? {};
+      (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+  } catch (err) {
+    // ignore localStorage errors
+  }
+  return config;
+});
+
+// Global response interceptor to handle unauthorized access centrally
+apiClient.interceptors.response.use(
+  (r) => r,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      try {
+        localStorage.removeItem(TOKEN_KEY);
+      } catch (e) {
+        // ignore
+      }
+      // Redirect to login for a simple MVP flow
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 /**
  * Global error handler
@@ -105,7 +154,3 @@ export const checkBackendConnectivity = async (): Promise<boolean> => {
     return false;
   }
 };
-
-
-// right now all error are logged in the console
-// for production, we could integrate with a service azure monitoring to capture errors in a centralized dashboard for better monitoring and alerting

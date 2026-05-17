@@ -4,6 +4,7 @@ import { NextOfKin } from "@/types/member";
 import TextInput from "@/components/ui/TextInput";
 import SelectInput from "@/components/ui/SelectInput";
 import DateInput from "@/components/ui/DateInput";
+import { displayTextToGender, genderToDisplayText, displayTextToRelationship, relationshipToDisplayText } from "@/utils/helpers";
 
 interface Props { // Consider renaming to NextOfKinFormProps for clarity
   nextOfKin: NextOfKin;
@@ -12,6 +13,7 @@ interface Props { // Consider renaming to NextOfKinFormProps for clarity
     nextOfKinFirstName: string | null;
     nextOfKinLastName: string | null;
     nextOfKinRelationship: string | null;
+    nextOfKinGender: string | null;
     nextOfKinIdNumber: string | null;
     nextOfKinPhoneNumber: string | null;
     nextOfKinDateOfBirth: string | null;
@@ -21,9 +23,15 @@ interface Props { // Consider renaming to NextOfKinFormProps for clarity
 const relationshipOptions = [
   { value: "Spouse", label: "Spouse" },
   { value: "Parent", label: "Parent" },
-  { value: "Sibling", label: "Sibling" },
-  { value: "Child", label: "Child" },
-  { value: "Guardian", label: "Guardian" },
+  { value: "Son", label: "Son" },
+  { value: "Daughter", label: "Daughter" },
+  { value: "Other", label: "Other" },
+];
+
+const genderOptions = [
+  { value: "Male", label: "Male" },
+  { value: "Female", label: "Female" },
+  { value: "Other", label: "Other" },
 ];
 
 export default function NextOfKinForm({ nextOfKin, onChange, errors }: Props) {
@@ -55,10 +63,24 @@ export default function NextOfKinForm({ nextOfKin, onChange, errors }: Props) {
 
         <SelectInput
           label="Relationship"
-          value={nextOfKin.relationship}
-          onChange={(value) => onChange({ ...nextOfKin, relationship: value })}
+          value={relationshipToDisplayText(nextOfKin.relationship)}
+          onChange={(displayValue) => {
+            const relationshipValue = displayTextToRelationship(displayValue);
+            onChange({ ...nextOfKin, relationship: relationshipValue });
+          }}
           options={relationshipOptions}
           error={errors.nextOfKinRelationship}
+        />
+
+        <SelectInput
+          label="Gender"
+          value={genderToDisplayText(nextOfKin.gender)}
+          onChange={(displayValue) => {
+            const genderValue = displayTextToGender(displayValue);
+            onChange({ ...nextOfKin, gender: genderValue });
+          }}
+          options={genderOptions}
+          error={errors.nextOfKinGender}
         />
 
         <TextInput
