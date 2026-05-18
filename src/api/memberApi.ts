@@ -1,164 +1,150 @@
-import {
-  MemberDetails,
-  MemberListItem,
-  RegisterMemberPayload,
-  Dependant,
-  NextOfKin,
-  PrincipalMember,
-} from "@/types/member";
+// src/services/memberApi.ts
+
+import { apiClient, handleError } from "./client";
+
 import {
   mapMemberDetails,
   mapMemberListItem,
 } from "@/features/members/mappers/memberMapper";
-import { apiClient, handleError } from './client';
-import { normalizeRole } from '@/utils/auth';
 
-// ─────────────────────────────────────────────
-// Internal helpers — not exported
-// ─────────────────────────────────────────────
+import type {
+  MemberDetailsDTO,
+  MemberListItemDTO,
+  RegisterMemberRequestDTO,
+  DependantDTO,
+  NextOfKinDTO,
+  PrincipalMemberDTO,
+} from "@/types/member";
 
-/**
- * Reads the stored auth user and resolves their normalized role string.
- * Throws immediately if the user is not authenticated or role is unresolvable,
- * so every API method fails loudly instead of silently routing to /auth.
- */
+/* -------------------------------------------------------------------------- */
+/*                                ROLE RESOLVER                               */
+/* -------------------------------------------------------------------------- */
+
 const getRole = (): string => {
-  const raw = localStorage.getItem('auth_user');
+  const raw = localStorage.getItem("auth_user");
+
   if (!raw) {
-    throw new Error('Not authenticated — auth_user missing from storage');
+    console.error("❌ auth_user not found in localStorage");
+    throw new Error("Not authenticated");
   }
 
-  let user: { role?: string; rawRole?: string } | null = null;
+  let user: any;
+
   try {
     user = JSON.parse(raw);
   } catch {
-    throw new Error('Malformed auth_user in storage');
+    console.error("❌ Failed to parse auth_user from localStorage");
+    throw new Error("Malformed auth_user");
   }
 
-  const candidate = user?.rawRole ?? user?.role;
-  const role = normalizeRole(candidate);
+  // The AuthProvider stores role as already normalized (e.g., "ADMIN", "COORDINATOR")
+  // So we shouldn't normalize again - just use the role directly
+  const role = user?.role;
 
   if (!role) {
-    throw new Error(`Unresolvable role: "${candidate}"`);
+    console.error("❌ No role found in auth_user. User object:", user);
+    throw new Error("Invalid user role");
   }
 
-  return role; // e.g. 'facilitator' | 'coordinator' | 'admin'
+  console.log("✅ User role resolved:", role);
+  return role;
 };
 
-/**
- * Returns the role-scoped members base path.
- * e.g. /facilitator/members | /coordinator/members | /admin/members
- *
- * apiClient.baseURL already includes /api, so paths here are relative to that.
- */
-const getMembersBase = (): string => `/${getRole()}/members`;
-
-/**
- * Returns the correct registration endpoint per role.
- *
- * Admin registers system users (facilitators / coordinators) via a separate path.
- * Facilitator and Coordinator register principal members via their members path.
- */
-const getRegisterBase = (): string => {
+const getMembersBase = (): string => {
   const role = getRole();
-  if (role === 'admin') return '/admin/user/register';
-  return `/${role}/members/register`;
+  const endpoint = `/${role.toLowerCase()}/members`;
+  console.log("✅ Members endpoint:", endpoint);
+  return endpoint;
 };
 
-// ─────────────────────────────────────────────
-// Member API
-// ─────────────────────────────────────────────
+const getRegisterBase = (): string => {
+  const role = getRole().toLocaleLowerCase();
 
-/**
- * MEMBER API
- *
- * Bridge between the frontend and backend for all member-related operations.
- * Encapsulates HTTP requests, data transformation, and error handling in one
- * place for consistency across the application.
- *
- * Every method:
- *  - Uses apiClient (Axios instance) for HTTP communication
- *  - Calls handleError() on failure for consistent error messaging
- *  - Maps raw backend data to typed frontend models via memberMapper
- */
+  return role === "admin"
+    ? "/admin/user/register"
+    : `/${role}/members/register`;
+};
+
+/* -------------------------------------------------------------------------- */
+/*                                 MEMBER API                                 */
+/* -------------------------------------------------------------------------- */
+
 export const memberApi = {
+  /* ---------------------------- GET ALL MEMBERS --------------------------- */
 
-  // ── LIST ──────────────────────────────────────────────────────────────────
-
-  /**
-   * Fetch all members (list view).
-   * Routes to /{role}/members — e.g. /facilitator/members
-   */
-  async getAll(): Promise<MemberListItem[]> {
+  async getAll(): Promise<MemberListItemDTO[]> {
     try {
       const res = await apiClient.get(getMembersBase());
-      return res.data.map(mapMemberListItem);
+
+      return (res.data ?? []).map(mapMemberListItem);
     } catch (error) {
       handleError(error, "Failed to fetch members");
       throw error;
     }
   },
 
-  // ── SINGLE MEMBER ─────────────────────────────────────────────────────────
+  /* --------------------------- GET MEMBER BY ID --------------------------- */
 
-  /**
-   * Fetch detailed information for a single member by their system ID.
-   * Routes to /{role}/members/{id}
-   */
-  async getById(id: string): Promise<MemberDetails> {
+  async getById(
+    id: number
+  ): Promise<MemberDetailsDTO> {
     try {
-      const res = await apiClient.get(`${getMembersBase()}/${id}`);
+      const res = await apiClient.get(
+        `${getMembersBase()}/${id}`
+      );
+
       return mapMemberDetails(res.data);
     } catch (error) {
-      handleError(error, "Failed to fetch member details");
+      handleError(error, "Failed to fetch member");
       throw error;
     }
   },
 
-  /**
-   * Fetch a member by their National ID.
-   * Routes to /{role}/members/national-id/{nationalId}
-   */
-  async getByNationalId(nationalId: string): Promise<MemberDetails> {
-    if (!nationalId) {
-      throw new Error("National ID is required");
-    }
+  /* ---------------------- GET BY NATIONAL ID ---------------------- */
+
+  async getByNationalId(
+    nationalId: string
+  ): Promise<MemberDetailsDTO> {
     try {
-      const res = await apiClient.get(`${getMembersBase()}/national-id/${nationalId}`);
+      const res = await apiClient.get(
+        `${getMembersBase()}/national-id/${nationalId}`
+      );
+
       return mapMemberDetails(res.data);
     } catch (error) {
-      handleError(error, "Failed to fetch member by National ID");
+      handleError(error, "Failed to fetch by national ID");
       throw error;
     }
   },
 
-  // ── REGISTRATION ──────────────────────────────────────────────────────────
+  /* ---------------------------- REGISTER MEMBER --------------------------- */
 
-  /**
-   * Register a new principal member (facilitator / coordinator)
-   * or a new system user account (admin).
-   *
-   * Facilitator  → /facilitator/members/register
-   * Coordinator  → /coordinator/members/register
-   * Admin        → /admin/user/register
-   *
-   * Strips client-side generated IDs before sending to the backend.
-   */
-  async registerMember(payload: RegisterMemberPayload): Promise<MemberDetails> {
+  async registerMember(
+    payload: RegisterMemberRequestDTO
+  ): Promise<MemberDetailsDTO> {
     try {
-      const backendPayload = {
+      const cleaned: RegisterMemberRequestDTO = {
         principal: {
           ...payload.principal,
-          id: undefined, // backend generates the ID
+          id: undefined,
         },
         nextOfKin: {
           ...payload.nextOfKin,
           id: undefined,
         },
-        dependants: (payload.dependants ?? []).map(({ id, ...rest }) => rest),
+        dependants: (payload.dependants ?? []).map(
+          (d: DependantDTO) => ({
+            ...d,
+            id: undefined,
+          })
+        ),
       };
 
-      const res = await apiClient.post(getRegisterBase(), backendPayload);
+      const res = await apiClient.post(
+        getRegisterBase(),
+        cleaned
+      );
+
       return mapMemberDetails(res.data);
     } catch (error) {
       handleError(error, "Failed to register member");
@@ -166,176 +152,124 @@ export const memberApi = {
     }
   },
 
-  // ── PRINCIPAL MEMBER ──────────────────────────────────────────────────────
+  /* ------------------------ UPDATE PRINCIPAL (PATCH) ---------------------- */
 
-  /**
-   * Partially update a principal member's fields (PATCH — send only changed fields).
-   * Routes to /{role}/members/{id}
-   */
   async patchPrincipal(
-    id: string,
-    data: Partial<PrincipalMember>
-  ): Promise<MemberDetails> {
+    id: number,
+    data: Partial<PrincipalMemberDTO>
+  ): Promise<MemberDetailsDTO> {
     try {
-      const res = await apiClient.patch(`${getMembersBase()}/${id}`, data);
+      const res = await apiClient.patch(
+        `${getMembersBase()}/${id}`,
+        data
+      );
+
       return mapMemberDetails(res.data);
     } catch (error) {
-      handleError(error, "Failed to patch principal member");
+      handleError(error, "Failed to update member");
       throw error;
     }
   },
 
-  /**
-   * Fully replace a principal member's record (PUT — send all fields).
-   * Routes to /{role}/members/{id}
-   */
   async updatePrincipal(
-    id: string,
-    data: PrincipalMember
-  ): Promise<MemberDetails> {
+    id: number,
+    data: PrincipalMemberDTO
+  ): Promise<MemberDetailsDTO> {
     try {
-      const res = await apiClient.put(`${getMembersBase()}/${id}`, data);
+      const res = await apiClient.put(
+        `${getMembersBase()}/${id}`,
+        data
+      );
+
       return mapMemberDetails(res.data);
     } catch (error) {
-      handleError(error, "Failed to update principal member");
+      handleError(error, "Failed to update member");
       throw error;
     }
   },
 
-  /**
-   * Delete a principal member.
-   * Backend is expected to cascade-delete dependants and next of kin.
-   * Routes to /{role}/members/{id}
-   */
-  async deleteMember(id: string): Promise<void> {
+  async deleteMember(id: number): Promise<void> {
     try {
-      await apiClient.delete(`${getMembersBase()}/${id}`);
+      await apiClient.delete(
+        `${getMembersBase()}/${id}`
+      );
     } catch (error) {
       handleError(error, "Failed to delete member");
       throw error;
     }
   },
 
-  // ── NEXT OF KIN ───────────────────────────────────────────────────────────
+  /* ----------------------------- NEXT OF KIN ------------------------------ */
 
-  /**
-   * Fully replace next of kin (PUT — all fields required).
-   * Routes to /{role}/members/{principalId}/next-of-kin
-   */
   async updateNextOfKin(
-    principalId: string,
-    data: NextOfKin
-  ): Promise<MemberDetails> {
-    try {
-      const res = await apiClient.put(
-        `${getMembersBase()}/${principalId}/next-of-kin`,
-        data
-      );
-      return mapMemberDetails(res.data);
-    } catch (error) {
-      handleError(error, "Failed to update next of kin");
-      throw error;
-    }
+    principalId: number,
+    data: NextOfKinDTO
+  ): Promise<MemberDetailsDTO> {
+    const res = await apiClient.put(
+      `${getMembersBase()}/${principalId}/next-of-kin`,
+      data
+    );
+
+    return mapMemberDetails(res.data);
   },
 
-  /**
-   * Partially update next of kin fields (PATCH — send only changed fields).
-   * Routes to /{role}/members/{principalId}/next-of-kin
-   */
   async patchNextOfKin(
-    principalId: string,
-    data: Partial<NextOfKin>
-  ): Promise<MemberDetails> {
-    try {
-      const res = await apiClient.patch(
-        `${getMembersBase()}/${principalId}/next-of-kin`,
-        data
-      );
-      return mapMemberDetails(res.data);
-    } catch (error) {
-      handleError(error, "Failed to patch next of kin");
-      throw error;
-    }
+    principalId: number,
+    data: Partial<NextOfKinDTO>
+  ): Promise<MemberDetailsDTO> {
+    const res = await apiClient.patch(
+      `${getMembersBase()}/${principalId}/next-of-kin`,
+      data
+    );
+
+    return mapMemberDetails(res.data);
   },
 
-  /**
-   * Delete next of kin for a principal member.
-   * Routes to /{role}/members/{principalId}/next-of-kin
-   */
-  async deleteNextOfKin(principalId: string): Promise<MemberDetails> {
-    try {
-      const res = await apiClient.delete(
-        `${getMembersBase()}/${principalId}/next-of-kin`
-      );
-      return mapMemberDetails(res.data);
-    } catch (error) {
-      handleError(error, "Failed to delete next of kin");
-      throw error;
-    }
+  async deleteNextOfKin(
+    principalId: number
+  ): Promise<MemberDetailsDTO> {
+    const res = await apiClient.delete(
+      `${getMembersBase()}/${principalId}/next-of-kin`
+    );
+
+    return mapMemberDetails(res.data);
   },
 
-  // ── DEPENDANTS ────────────────────────────────────────────────────────────
+  /* ------------------------------ DEPENDANTS ------------------------------ */
 
-  /**
-   * Add a new dependant to a principal member.
-   * Backend generates the dependant ID — we omit it from the payload.
-   * Routes to /{role}/members/{principalId}/dependants
-   */
   async addDependant(
-    principalId: string,
-    data: Omit<Dependant, "id">
-  ): Promise<MemberDetails> {
-    try {
-      const res = await apiClient.post(
-        `${getMembersBase()}/${principalId}/dependants`,
-        data
-      );
-      return mapMemberDetails(res.data);
-    } catch (error) {
-      handleError(error, "Failed to add dependant");
-      throw error;
-    }
+    principalId: number,
+    data: Omit<DependantDTO, "id">
+  ): Promise<MemberDetailsDTO> {
+    const res = await apiClient.post(
+      `${getMembersBase()}/${principalId}/dependants`,
+      data
+    );
+
+    return mapMemberDetails(res.data);
   },
 
-  /**
-   * Partially update a dependant's fields.
-   * Requires principalId to scope the request correctly and match the backend
-   * route pattern used by all other dependant operations.
-   * Routes to /{role}/members/{principalId}/dependants/{dependantId}
-   */
   async patchDependant(
-    principalId: string,
-    dependantId: string,
-    data: Partial<Dependant>
-  ): Promise<MemberDetails> {
-    try {
-      const res = await apiClient.patch(
-        `${getMembersBase()}/${principalId}/dependants/${dependantId}`,
-        data
-      );
-      return mapMemberDetails(res.data);
-    } catch (error) {
-      handleError(error, "Failed to update dependant");
-      throw error;
-    }
+    principalId: number,
+    dependantId: number,
+    data: Partial<DependantDTO>
+  ): Promise<MemberDetailsDTO> {
+    const res = await apiClient.patch(
+      `${getMembersBase()}/${principalId}/dependants/${dependantId}`,
+      data
+    );
+
+    return mapMemberDetails(res.data);
   },
 
-  /**
-   * Delete a dependant from a principal member.
-   * Routes to /{role}/members/{principalId}/dependants/{dependantId}
-   */
   async deleteDependant(
-    principalId: string,
-    dependantId: string
-  ): Promise<MemberDetails> {
-    try {
-      const res = await apiClient.delete(
-        `${getMembersBase()}/${principalId}/dependants/${dependantId}`
-      );
-      return mapMemberDetails(res.data);
-    } catch (error) {
-      handleError(error, "Failed to delete dependant");
-      throw error;
-    }
+    principalId: number,
+    dependantId: number
+  ): Promise<MemberDetailsDTO> {
+    const res = await apiClient.delete(
+      `${getMembersBase()}/${principalId}/dependants/${dependantId}`
+    );
+
+    return mapMemberDetails(res.data);
   },
 };

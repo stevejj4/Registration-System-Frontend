@@ -1,3 +1,5 @@
+import type { UserRole } from "@/types/enums";
+
 /**
  * Normalize backend role strings like:
  * ROLE_ADMIN → ADMIN
@@ -26,4 +28,22 @@ export const normalizeRole = (
     default:
       return null;
   }
+};
+
+export const roleMatches = (
+  userRole: string | null | undefined,
+  allowedRoles: string | string[]
+): boolean => {
+  if (!userRole) return false;
+
+  const normalizedUserRole = normalizeRole(userRole);
+  if (!normalizedUserRole) return false;
+
+  const rolesArray = Array.isArray(allowedRoles)
+    ? allowedRoles
+    : [allowedRoles];
+
+  return rolesArray.some(
+    (role) => normalizeRole(role) === normalizedUserRole
+  );
 };

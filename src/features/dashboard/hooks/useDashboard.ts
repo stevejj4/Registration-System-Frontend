@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { memberApi } from '@/api/memberApi';
-import { MemberListItem } from '@/types/member';
+import { MemberListItemDTO } from '@/types/member';
 import { useApiCall } from '@/hooks/useApiCall';
 
 //  Dashboard statistics and recent activity types

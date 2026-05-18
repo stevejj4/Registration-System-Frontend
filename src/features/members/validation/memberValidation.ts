@@ -190,7 +190,7 @@ export function validateNextOfKin(nextOfKin: NextOfKinDTO, errors: ValidationErr
   return newErrors;
 }
 
-export function validateDependants(dependants: DependantDTO[], errors: ValidationError): ValidationError {
+export function validateDependants(dependants: DependantFormData[], errors: ValidationError): ValidationError {
   const newErrors = { ...errors };
 
   // Clear general error initially

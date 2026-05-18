@@ -144,13 +144,16 @@ export const handleError = (error: unknown, fallback: string): never => { // err
 /**
  * Check backend connectivity
  */
+// In client.ts — change the connectivity check endpoint to one that's public
 export const checkBackendConnectivity = async (): Promise<boolean> => {
   try {
-    // Try to get members list as a connectivity check
-    const response = await apiClient.get('/members', { timeout: 5000 });
+    const response = await apiClient.get('/auth/ping', { timeout: 5000 });
     return response.status === 200;
   } catch (error) {
-    console.warn('Backend connectivity check failed:', error);
-    return false;
+    // If it's a 4xx the server IS reachable, just rejecting the request
+    if (axios.isAxiosError(error) && error.response) {
+      return true; // server responded = it's up
+    }
+    return false; // no response = server is down
   }
 };

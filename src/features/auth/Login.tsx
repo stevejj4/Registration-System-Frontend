@@ -30,10 +30,10 @@ export const Login: React.FC = () => {
       <h2 className="text-2xl font-semibold mb-4">Sign in</h2>
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
-          <TextInput value={email} onChange={(e) => setEmail(e.target.value)} label="Email" type="email" required />
+          <TextInput value={email} onChange={(value) => setEmail(value)} label="Email" type="email" required />
         </div>
         <div className="mb-3">
-          <TextInput value={password} onChange={(e) => setPassword(e.target.value)} label="Password" type="password" required />
+          <TextInput value={password} onChange={(value) => setPassword(value)} label="Password" type="password" required />
         </div>
         {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
         <div className="flex justify-end">

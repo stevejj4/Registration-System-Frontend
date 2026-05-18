@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { PrincipalMember, Dependant, NextOfKin, RegisterMemberPayload } from "@/types/member";
+import { PrincipalMember, Dependant, NextOfKin, RegisterMemberPayload, DependantDTO } from "@/types/member";
 import { Save, ArrowLeft, ShieldCheck } from "lucide-react";
 import { motion } from "motion/react";
 import PrincipalMemberForm from "./PrincipalMemberForm";
@@ -116,10 +116,23 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     setLoading(true);
     setErrors(initialValidationError);
 
-    const payload: RegisterMemberPayload = { // Ensure payload structure matches what the API expects
+    // Convert form data to proper DTO format
+    // Filter out temporary string IDs (new dependants shouldn't have IDs)
+    const convertedDependants: DependantDTO[] = dependants.map(dep => ({
+      firstName: dep.firstName,
+      lastName: dep.lastName,
+      relationship: dep.relationship as any, // TypeScript knows it's a valid RelationshipType after validation
+      gender: dep.gender as any, // TypeScript knows it's a valid GenderType after validation
+      phoneNumber: dep.phoneNumber,
+      dateOfBirth: dep.dateOfBirth,
+      birthCertificatePath: dep.birthCertificatePath,
+      // Omit id - new dependants don't have IDs yet
+    }));
+
+    const payload: RegisterMemberPayload = {
       principal,
       nextOfKin,
-      dependants,
+      dependants: convertedDependants,
     };
 
     const result = await registerMember(payload);

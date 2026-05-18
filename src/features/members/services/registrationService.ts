@@ -1,5 +1,4 @@
 import { memberApi } from "@/api/memberApi";
-import { checkBackendConnectivity } from "@/api/client";
 import { RegisterMemberPayload } from "@/types/member";
 import { ERROR_MESSAGES } from "@/constants";
 
@@ -13,27 +12,17 @@ export async function registerMember(
   payload: RegisterMemberPayload
 ): Promise<RegistrationResult> {
   try {
-    // Check backend connectivity first
-    const isBackendConnected = await checkBackendConnectivity();
-    
-    if (!isBackendConnected) {
-      return {
-        success: false,
-        error: 'Server is currently unavailable. Please try again later.'
-      };
-    }
-
     const newMember = await memberApi.registerMember(payload);
-    
+
     return {
       success: true,
-      memberId: newMember.id
+      memberId: String(newMember.principal.id),
     };
   } catch (err: any) {
-    console.error('Registration failed:', err);
+    console.error("Registration failed:", err);
     return {
       success: false,
-      error: err.message || ERROR_MESSAGES.REGISTRATION_FAILED
+      error: err.message || ERROR_MESSAGES.REGISTRATION_FAILED,
     };
   }
 }
