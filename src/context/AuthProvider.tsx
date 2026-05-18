@@ -102,8 +102,18 @@ export const AuthProvider: React.FC<{
       const res: AuthResponseDTO =
         await apiLogin(payload);
 
+      console.log("🔍 DEBUG: res.role from server:", {
+        raw: res.role,
+        type: typeof res.role,
+      });
+
       const normalizedRole =
         normalizeRole(res.role);
+      
+      console.log("🔍 DEBUG: After normalizeRole:", {
+        input: res.role,
+        output: normalizedRole,
+      });
       
       if (!normalizedRole) {
         throw new Error("Invalid user role from server");
