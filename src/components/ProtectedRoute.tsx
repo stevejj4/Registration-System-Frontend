@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { roleMatches } from '@/utils/auth';
+import { roleMatches } from '../utils/auth';
 
 interface Props {
   children: React.ReactElement;
