@@ -1,4 +1,4 @@
-import { MemberDetails, NextOfKin, Dependant, MemberListItem } from '@/types/member';
+import { MemberDetailsDTO, NextOfKin, Dependant, MemberListItemDTO } from '@/types/member';
 
 // Common form field configurations
 export const FORM_FIELDS = {
@@ -8,7 +8,7 @@ export const FORM_FIELDS = {
     nationalID: { label: 'National ID', type: 'text', required: true },
     phoneNumber: { label: 'Phone Number', type: 'tel', required: true },
     dateOfBirth: { label: 'Date of Birth', type: 'date', required: true },
-    groupName: { label: 'Group Name', type: 'select', required: true, options: ['Group A', 'Group B', 'Group C'] },
+    groupName: { label: 'Group Name', type: 'select', required: false, options: ['Group A', 'Group B', 'Group C'] },
   },
   nextOfKin: {
     firstName: { label: 'First Name', type: 'text', required: true },
@@ -30,7 +30,7 @@ export const FORM_FIELDS = {
 
 // Common form state initializers
 export const getInitialFormState = {
-  principal: (member: MemberDetails) => ({
+  principal: (member: MemberDetailsDTO) => ({
     firstName: member.principal?.firstName || '',
     lastName: member.principal?.lastName || '',
     nationalID: member.principal?.nationalID || '',
@@ -38,7 +38,7 @@ export const getInitialFormState = {
     dateOfBirth: member.principal?.dateOfBirth || '',
     groupName: member.principal?.groupName || '',
   }),
-  nextOfKin: (member: MemberDetails) => ({
+  nextOfKin: (member: MemberDetailsDTO) => ({
     firstName: member.nextOfKin?.firstName || '',
     lastName: member.nextOfKin?.lastName || '',
     relationship: member.nextOfKin?.relationship || '',
@@ -69,7 +69,7 @@ export const formatMemberName = (member: { firstName?: string; lastName?: string
   return formatFullName(member.firstName, member.lastName);
 };
 
-export const formatMemberDisplay = (member: MemberListItem): string => {
+export const formatMemberDisplay = (member: MemberListItemDTO): string => {
   return `${member.firstName} ${member.lastName} (${member.nationalID})`;
 };
 
