@@ -50,7 +50,7 @@ export const registerUser = async (
   payload: RegisterUserDTO
 ): Promise<UserDTO> => {
   const response = await apiClient.post(
-    "/auth/register",
+    "/admin/register",
     payload
   );
 

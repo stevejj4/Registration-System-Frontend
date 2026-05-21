@@ -53,7 +53,7 @@ export const validateNationalId = (
   if (!id) return false;
 
   // Kenyan ID: 7–8 digits (some systems vary)
-  return /^\d{7,8}$/.test(id);
+  return /^\d{7,10}$/.test(id);
 };
 
 export const validatePhoneNumber = (
@@ -158,7 +158,7 @@ export const filterMembers = (
       member.phoneNumber
         .toLowerCase()
         .includes(term) ||
-      member.groupName
+      member.groupName?.toLowerCase()
         .toLowerCase()
         .includes(term)
     );

@@ -60,9 +60,7 @@ const getMembersBase = (): string => {
 const getRegisterBase = (): string => {
   const role = getRole().toLocaleLowerCase();
 
-  return role === "admin"
-    ? "/admin/user/register"
-    : `/${role}/members/register`;
+  return "/admin/members/register";
 };
 
 /* -------------------------------------------------------------------------- */
@@ -74,7 +72,7 @@ export const memberApi = {
 
   async getAll(): Promise<MemberListItemDTO[]> {
     try {
-      const res = await apiClient.get(getMembersBase());
+      const res = await apiClient.get(getMembersBase()); // 
 
       return (res.data ?? []).map(mapMemberListItem);
     } catch (error) {

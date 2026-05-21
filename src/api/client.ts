@@ -7,8 +7,8 @@ import type { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
  * Easier to swap environments (dev, staging, prod) by changing one place
  */
 export const apiClient = axios.create({ 
-  baseURL: "http://localhost:9090/api", 
-  headers: { // default headers for all requests.
+  baseURL: "http://localhost:9090/api", // default base URL for all API requests,
+  headers: { 
     "Content-Type": "application/json", // 
   }, 
 });
@@ -21,14 +21,14 @@ const TOKEN_KEY = 'auth_token';
  */
 export const setAuthToken = (token?: string) => {
   if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(TOKEN_KEY, token); // login case: store the token in localStorage so it can be used by the interceptor to set the Authorization header on future requests
   } else {
-    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY); // logout case: remove the token from localStorage to effectively log the user out and prevent the interceptor from adding an Authorization header to future requests
   }
 };
 
-// Attach Authorization header if token exists
-apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+// Attach JWT token to every login request if available
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => { 
   try {
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) {

@@ -8,7 +8,7 @@ export interface ValidationError {
   principalGender: string | null;
   principalPhoneNumber: string | null;
   principalDateOfBirth: string | null;
-  principalGroupName: string | null;
+  principalGroupName?: string | null;
   nextOfKinFirstName: string | null;
   nextOfKinLastName: string | null;
   nextOfKinRelationship: string | null;
@@ -94,15 +94,15 @@ export function validatePrincipal(principal: PrincipalMemberDTO, errors: Validat
   }
 
   // Group name validation
-  if (!principal.groupName.trim()) {
-    newErrors.principalGroupName = "Group name is required";
+  if (principal.groupName !== undefined && principal.groupName.trim() === "") {
+    newErrors.principalGroupName = "Group name is optional";
     isValid = false;
   } else {
     newErrors.principalGroupName = null;
   }
 
   // Gender validation
-  if (!principal.gender.trim()) {
+  if (!principal.gender) {
     newErrors.principalGender = "Gender is required";
     isValid = false;
   } else if (!["MALE", "FEMALE", "OTHER"].includes(principal.gender)) {
@@ -142,7 +142,7 @@ export function validateNextOfKin(nextOfKin: NextOfKinDTO, errors: ValidationErr
   }
 
   // Relationship validation
-  if (!nextOfKin.relationship.trim()) {
+  if (!nextOfKin.relationship) {
     newErrors.nextOfKinRelationship = "Relationship is required";
     isValid = false;
   } else {
@@ -177,7 +177,7 @@ export function validateNextOfKin(nextOfKin: NextOfKinDTO, errors: ValidationErr
   }
 
   // Gender validation
-  if (!nextOfKin.gender.trim()) {
+  if (!nextOfKin.gender) {
     newErrors.nextOfKinGender = "Gender is required";
     isValid = false;
   } else if (!["MALE", "FEMALE", "OTHER"].includes(nextOfKin.gender)) {
@@ -204,7 +204,7 @@ export function validateDependants(dependants: DependantFormData[], errors: Vali
         break;
       }
 
-      if (!dependant.relationship.trim()) {
+      if (!dependant.relationship) {
         newErrors.general = "All dependants must have a relationship";
         break;
       }
@@ -214,9 +214,10 @@ export function validateDependants(dependants: DependantFormData[], errors: Vali
         break;
       }
 
-      if (dependant.phoneNumber && !VALIDATION_RULES.PHONE_REGEX.test(dependant.phoneNumber)) {
+      if (dependant.phoneNumber) {
+         if (!VALIDATION_RULES.PHONE_REGEX.test(dependant.phoneNumber)) {
         newErrors.general = "Invalid phone number format for dependant";
-        break;
+        break; }
       }
 
       if (!dependant.dateOfBirth) {

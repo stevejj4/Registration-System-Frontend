@@ -25,7 +25,7 @@ export interface SystemUser {
  */
 export const getUsers = async (): Promise<SystemUser[]> => {
   try {
-    const res = await apiClient.get('/admin/newUsers');
+    const res = await apiClient.get('/admin/users');
     return res.data;
   } catch (error) {
     handleError(error, 'Failed to fetch system users');
@@ -55,7 +55,7 @@ export const registerUser = async (
   data: Omit<SystemUser, 'id'>
 ): Promise<SystemUser> => {
   try {
-    const res = await apiClient.post('/admin/user/register', data);
+    const res = await apiClient.post('/admin/register', data);
     return res.data;
   } catch (error) {
     handleError(error, 'Failed to register system user');
@@ -68,6 +68,8 @@ export const registerUser = async (
  * Used by UserList.tsx delete button.
  * Routes to DELETE /api/admin/users/{id}
  */
+
+
 export const deleteUser = async (id: string): Promise<void> => {
   try {
     await apiClient.delete(`/admin/users/${id}`);
@@ -81,6 +83,8 @@ export const deleteUser = async (id: string): Promise<void> => {
  * Reset a principal member's password.
  * Routes to POST /api/admin/members/{memberId}/reset-password
  */
+
+/*
 export const resetMemberPassword = async (
   memberId: string,
   newPassword: string
@@ -88,7 +92,7 @@ export const resetMemberPassword = async (
   if (!memberId) throw new Error('Member ID is required');
   if (!newPassword) throw new Error('New password is required');
   try {
-    await apiClient.post(`/admin/members/${memberId}/reset-password`, {
+    await apiClient.put(`/admin/members/${memberId}/reset-password`, {
       newPassword,
     });
   } catch (error) {
@@ -96,7 +100,7 @@ export const resetMemberPassword = async (
     throw error;
   }
 };
-
+*/
 /**
  * Reset a system user's password (facilitator / coordinator).
  * Routes to POST /api/admin/users/{userId}/reset-password
@@ -108,7 +112,7 @@ export const resetUserPassword = async (
   if (!userId) throw new Error('User ID is required');
   if (!newPassword) throw new Error('New password is required');
   try {
-    await apiClient.post(`/admin/users/${userId}/reset-password`, {
+    await apiClient.put(`/admin/users/${userId}/reset-password`, {
       newPassword,
     });
   } catch (error) {
