@@ -16,6 +16,16 @@ import { login as apiLogin } from "@/api/authApi";
 import { setAuthToken } from "@/api/client";
 import { normalizeRole } from "@/utils/auth";
 
+/**
+ * Authentication Context and Provider
+ * Manages user authentication state and provides login/logout functions.
+ * Uses localStorage to persist auth state across page reloads.
+ * Syncs JWT token with Axios for authenticated API requests.
+ * It is security guard at the gateway of the app - if you can't authenticate, you can't access any protected routes or API calls.
+ * It remembers who you are (user info) and what you can do (role) and your badge (token) so you don't have to log in again on every page refresh.
+ * It knows how to talk to the backend to log you in and log you out, and it makes sure your token is included in every API request so the backend knows who you are and what you can do.
+ */
+
 /* -------------------------------------------------------------------------- */
 /*                                  CONTEXT                                   */
 /* -------------------------------------------------------------------------- */

@@ -39,23 +39,6 @@ export const login = async (
   return data;
 };
 
-/* -------------------------------------------------------------------------- */
-/*                                REGISTER USER                               */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Register new system user
- */
-export const registerUser = async (
-  payload: RegisterUserDTO
-): Promise<UserDTO> => {
-  const response = await apiClient.post(
-    "/admin/register",
-    payload
-  );
-
-  return response.data as UserDTO;
-};
 
 /* -------------------------------------------------------------------------- */
 /*                              FORGOT PASSWORD                               */
@@ -69,7 +52,7 @@ export const forgotPassword =
     payload: ForgotPasswordRequestDTO
   ): Promise<void> => {
     await apiClient.post(
-      "/auth/forgot-password",
+      "/auth/password/forgot",
       payload
     );
   };
@@ -86,7 +69,7 @@ export const resetPassword =
     payload: ResetPasswordRequestDTO
   ): Promise<void> => {
     await apiClient.post(
-      "/auth/reset-password",
+      "/auth/password/reset",
       payload
     );
   };

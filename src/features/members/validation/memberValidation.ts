@@ -214,10 +214,9 @@ export function validateDependants(dependants: DependantFormData[], errors: Vali
         break;
       }
 
-      if (dependant.phoneNumber) {
-         if (!VALIDATION_RULES.PHONE_REGEX.test(dependant.phoneNumber)) {
+      if (dependant.phoneNumber && !VALIDATION_RULES.PHONE_REGEX.test(dependant.phoneNumber)) {
         newErrors.general = "Invalid phone number format for dependant";
-        break; }
+        break;
       }
 
       if (!dependant.dateOfBirth) {

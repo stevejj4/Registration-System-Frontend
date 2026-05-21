@@ -14,7 +14,7 @@ export const ERROR_MESSAGES = {
 export const VALIDATION_RULES = {
   MIN_NAME_LENGTH: 2,
   MAX_NAME_LENGTH: 50,
-  NATIONAL_ID_REGEX: /^\d{8}$/,
+  NATIONAL_ID_REGEX: /^\d{10}$/,
   PHONE_REGEX: /^07\d{8}$/,
   EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
 };

@@ -21,7 +21,7 @@ export interface PrincipalMemberDTO {
 
   phoneNumber: string;
 
-  groupName: string;
+  groupName?: string;
 
   dateOfBirth: string; // yyyy-MM-dd
 }
@@ -46,7 +46,7 @@ export interface NextOfKinDTO {
 
   dateOfBirth: string;
 
-  idAttachmentPath?: string;
+  idAttachmentPath?: string | File | null;
 }
 
 /**
@@ -67,7 +67,7 @@ export interface DependantDTO {
 
   dateOfBirth: string;
 
-  birthCertificatePath?: string;
+  birthCertificatePath?: string | File | null;
 }
 
 /**
@@ -109,7 +109,7 @@ export interface MemberListItemDTO {
 
   phoneNumber: string;
 
-  groupName: string;
+  groupName?: string;
 
   registrationDate: string;
 }
@@ -149,7 +149,7 @@ export interface DependantFormData {
 
   dateOfBirth: string;
 
-  birthCertificatePath?: string;
+  birthCertificatePath?: string | File | null;
 }
 
 /**
