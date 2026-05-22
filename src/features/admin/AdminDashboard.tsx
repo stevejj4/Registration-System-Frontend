@@ -77,7 +77,7 @@ export default function AdminDashboard() {
               contact a system administrator to request elevated access.
             </p>
             <div className="mt-4">
-              <button onClick={() => navigate('/')} className="px-3 py-2 bg-gray-100 border rounded">Return to dashboard</button>
+              <button onClick={() => navigate('/admin')} className="px-3 py-2 bg-gray-100 border rounded">Return to admin home</button>
             </div>
           </div>
         )}

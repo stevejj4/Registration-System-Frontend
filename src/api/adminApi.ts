@@ -1,5 +1,7 @@
-import { RegisterUserDTO, UserRole } from 'src/types/auth';
+import { RegisterUserDTO } from 'src/types/auth';
 import { apiClient, handleError } from './client';
+import { normalizeRole } from '@/utils/auth';
+import type { UserRole } from '@/types/enums';
 
 /**
  * SystemUser — matches the shape UserList.tsx and AdminProvider expect.
@@ -9,8 +11,17 @@ export interface SystemUser {
   id: string;
   fullName: string;
   email: string;
-  role: string;        // raw role string from backend, e.g. 'ROLE_FACILITATOR'
-  rawRole?: string;
+  role: UserRole;
+}
+
+function mapSystemUser(raw: Record<string, unknown>): SystemUser {
+  const normalized = normalizeRole(String(raw.role ?? ""));
+  return {
+    id: String(raw.id),
+    fullName: String(raw.fullName ?? ""),
+    email: String(raw.email ?? ""),
+    role: normalized ?? "FACILITATOR",
+  };
 }
 
 /**
@@ -27,7 +38,8 @@ export interface SystemUser {
 export const getUsers = async (): Promise<SystemUser[]> => {
   try {
     const res = await apiClient.get('/admin/users');
-    return res.data;
+    const rows = Array.isArray(res.data) ? res.data : [];
+    return rows.map((row) => mapSystemUser(row as Record<string, unknown>));
   } catch (error) {
     handleError(error, 'Failed to fetch system users');
     throw error;
@@ -41,7 +53,7 @@ export const getUsers = async (): Promise<SystemUser[]> => {
 export const getUserById = async (id: string): Promise<SystemUser> => {
   try {
     const res = await apiClient.get(`/admin/users/${id}`);
-    return res.data;
+    return mapSystemUser(res.data as Record<string, unknown>);
   } catch (error) {
     handleError(error, 'Failed to fetch system user');
     throw error;
@@ -57,7 +69,7 @@ export const registerUser = async (
 ): Promise<SystemUser> => {
   try {
     const res = await apiClient.post('/admin/register', data);
-    return res.data;
+    return mapSystemUser(res.data as Record<string, unknown>);
   } catch (error) {
     handleError(error, 'Failed to register system user');
     throw error;
@@ -127,7 +139,7 @@ export const resetUserPassword = async (
  */
 export const updateUserRole = async (
   userId: string,
-  newRole: string
+  newRole: UserRole
 ): Promise<void> => {
   if (!userId) throw new Error('User ID is required');
   if (!newRole) throw new Error('New role is required');

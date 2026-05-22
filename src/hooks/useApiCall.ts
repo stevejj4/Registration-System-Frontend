@@ -48,7 +48,7 @@ export const useApiCall = <T,>( //
       setError(errorMessage);
       onErrorRef.current?.(err instanceof Error ? err : new Error(errorMessage));
     } finally {
-      setLoading(false);
+      setLoading(false); // Set loading to false once the API call is complete
     }
   }, []); // Empty dependency array - stable function reference
 

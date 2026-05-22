@@ -1,12 +1,36 @@
-import React, { useEffect, useState } from 'react';
-import { getUsers, deleteUser, registerUser, resetUserPassword, updateUserRole, SystemUser } from '@/api/adminApi';
-import { Button } from '@/components/ui/Button';
-import { UserRole } from '@/types/auth';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  getUsers,
+  deleteUser,
+  registerUser,
+  resetUserPassword,
+  updateUserRole,
+  SystemUser,
+} from "@/api/adminApi";
+import { Button } from "@/components/ui/Button";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
+import CreateUserModal from "@/features/admin/CreateUserModal";
+import ResetPasswordModal from "@/features/admin/ResetPasswordModal";
+import { UserRole } from "@/types/auth";
+import { useAuth } from "@/hooks/useAuth";
+import { isCurrentUserAccount } from "@/utils/userAccount";
+import { Search } from "lucide-react";
+
+const PAGE_SIZE = 8;
+const ASSIGNABLE_ROLES: UserRole[] = ["FACILITATOR", "COORDINATOR"];
 
 export default function UserList() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<SystemUser | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SystemUser | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -14,106 +38,302 @@ export default function UserList() {
     try {
       const res = await getUsers();
       setUsers(res || []);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load users');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load users");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const handleCreate = async () => {
-    const email = prompt("Enter email for new user:");
-    const fullName = prompt("Enter full name:");
-    const password = prompt("Enter temporary password:");
-    const role: UserRole = "FACILITATOR"; // default role for now
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (u) =>
+        u.fullName.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q)
+    );
+  }, [users, search]);
 
-    if (!email || !fullName || !password) return;
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
 
+  useEffect(() => {
+    setPage((p) => Math.min(p, totalPages - 1));
+  }, [totalPages]);
+
+  const paginatedUsers = useMemo(() => {
+    const start = page * PAGE_SIZE;
+    return filteredUsers.slice(start, start + PAGE_SIZE);
+  }, [filteredUsers, page]);
+
+  const existingEmails = useMemo(
+    () => users.map((u) => u.email),
+    [users]
+  );
+
+  const handleCreate = async (data: Parameters<typeof registerUser>[0]) => {
+    setError(null);
     try {
-      const newUser = await registerUser({ email, fullName, password, role });
-      setUsers(prev => [...prev, newUser]);
-    } catch (err: any) {
-      setError(err?.message || "Create failed");
+      const newUser = await registerUser(data);
+      setUsers((prev) => [...prev, newUser]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Create failed";
+      setError(message);
+      throw err;
     }
   };
 
-  const handleResetPassword = async (id: string) => {
-    const newPassword = prompt("Enter new password:");
-    if (!newPassword) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    if (isCurrentUserAccount(currentUser, deleteTarget)) {
+      setError("You cannot delete your own account.");
+      setDeleteTarget(null);
+      return;
+    }
+
+    setDeleting(true);
+    setError(null);
     try {
-      await resetUserPassword(id, newPassword);
-      alert("Password reset successfully");
-    } catch (err: any) {
-      setError(err?.message || "Reset failed");
+      await deleteUser(deleteTarget.id);
+      setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeleting(false);
     }
   };
-const handleDelete = async (id: string) => {
-  if (!confirm("Delete user?")) return;
-  try {
-    await deleteUser(id);
-    setUsers(prev => prev.filter(u => u.id !== id));
-  } catch (err: any) {
-    setError(err?.message || "Delete failed");
-  }
-};
+
+  const handleResetPassword = async (newPassword: string) => {
+    if (!resetTarget) return;
+    await resetUserPassword(resetTarget.id, newPassword);
+  };
 
   const handleChangeRole = async (id: string, newRole: UserRole) => {
+    const target = users.find((u) => u.id === id);
+    if (target && isCurrentUserAccount(currentUser, target)) {
+      setError("You cannot change your own role.");
+      return;
+    }
+
+    setError(null);
     try {
       await updateUserRole(id, newRole);
-      setUsers(prev => prev.map(u => u.id === id ? { ...u, role: newRole } : u));
-    } catch (err: any) {
-      setError(err?.message || "Role update failed");
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, role: newRole } : u))
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Role update failed");
     }
   };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <h3 className="text-lg font-medium">System Users</h3>
-        <div className="space-x-2">
-          <Button variant="outline" onClick={load}>Refresh</Button>
-          <Button variant="primary" onClick={handleCreate}>Create User</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={load} disabled={loading}>
+            Refresh
+          </Button>
+          <Button variant="primary" onClick={() => setCreateOpen(true)}>
+            Create User
+          </Button>
         </div>
       </div>
-      {loading && <p>Loading...</p>}
-      {error && <p className="text-red-600">{error}</p>}
+
+      <div className="mb-4 max-w-md relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(0);
+          }}
+          placeholder="Search by name or email..."
+          aria-label="Search users"
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      {loading && <p className="text-gray-600 mb-2">Loading...</p>}
+      {error && (
+        <p className="text-red-600 mb-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
+          {error}
+        </p>
+      )}
+
       <div className="overflow-x-auto bg-white rounded-md border">
         <table className="w-full text-left">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-2">Name</th>
-              <th className="px-4 py-2">Email</th>
-              <th className="px-4 py-2">Role</th>
-              <th className="px-4 py-2">Actions</th>
+              <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                Name
+              </th>
+              <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                Email
+              </th>
+              <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                Role
+              </th>
+              <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
-            {users.map(u => (
-              <tr key={u.id} className="border-t">
-                <td className="px-4 py-2">{u.fullName}</td>
-                <td className="px-4 py-2">{u.email}</td>
-                <td className="px-4 py-2">
-                  <select
-                    value={u.role}
-                    onChange={(e) => handleChangeRole(u.id, e.target.value as UserRole)}
-                    className="border rounded px-2 py-1"
-                  >
-                    <option value="ADMIN">ADMIN</option>
-                    <option value="FACILITATOR">FACILITATOR</option>
-                    <option value="COORDINATOR">COORDINATOR</option>
-                  </select>
-                </td>
-                <td className="px-4 py-2 space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => handleDelete(u.id)}>Delete</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleResetPassword(u.id)}>Reset Password</Button>
+            {paginatedUsers.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  {search ? "No users match your search." : "No users found."}
                 </td>
               </tr>
-            ))}
+            ) : (
+              paginatedUsers.map((u) => {
+                const isSelf = isCurrentUserAccount(currentUser, u);
+                return (
+                  <tr
+                    key={u.id}
+                    className={`border-t ${isSelf ? "bg-blue-50/50" : ""}`}
+                  >
+                    <td className="px-4 py-2">
+                      <span className="font-medium">{u.fullName}</span>
+                      {isSelf && (
+                        <span className="ml-2 text-xs font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                          You
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-gray-700">{u.email}</td>
+                    <td className="px-4 py-2">
+                      <select
+                        value={u.role}
+                        disabled={isSelf}
+                        title={
+                          isSelf
+                            ? "You cannot change your own role"
+                            : undefined
+                        }
+                        onChange={(e) =>
+                          handleChangeRole(u.id, e.target.value as UserRole)
+                        }
+                        className="border rounded-lg px-2 py-1.5 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        {ASSIGNABLE_ROLES.map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                        {u.role === "ADMIN" && (
+                          <option value="ADMIN">ADMIN</option>
+                        )}
+                      </select>
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isSelf}
+                          title={
+                            isSelf
+                              ? "You cannot delete your own account"
+                              : undefined
+                          }
+                          onClick={() => setDeleteTarget(u)}
+                        >
+                          Delete
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isSelf}
+                          title={
+                            isSelf
+                              ? "Reset your password via account settings"
+                              : undefined
+                          }
+                          onClick={() => setResetTarget(u)}
+                        >
+                          Reset Password
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
+
+      <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
+        <span>
+          Showing{" "}
+          {filteredUsers.length === 0
+            ? 0
+            : page * PAGE_SIZE + 1}
+          –
+          {Math.min((page + 1) * PAGE_SIZE, filteredUsers.length)} of{" "}
+          {filteredUsers.length}
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 0}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            Previous
+          </Button>
+          <span className="px-2 py-1">
+            Page {page + 1} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+
+      <CreateUserModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={handleCreate}
+        existingEmails={existingEmails}
+      />
+
+      <ResetPasswordModal
+        isOpen={!!resetTarget}
+        userName={resetTarget?.fullName ?? ""}
+        onClose={() => setResetTarget(null)}
+        onSubmit={handleResetPassword}
+      />
+
+      <ConfirmationModal
+        isOpen={!!deleteTarget}
+        title="Delete user"
+        message={
+          deleteTarget
+            ? `Are you sure you want to permanently delete ${deleteTarget.fullName} (${deleteTarget.email})? This action cannot be undone.`
+            : ""
+        }
+        confirmText={deleting ? "Deleting..." : "Delete"}
+        cancelText="Cancel"
+        variant="danger"
+        onCancel={() => !deleting && setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleting) void handleConfirmDelete();
+        }}
+      />
     </div>
   );
 }

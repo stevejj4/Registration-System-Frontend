@@ -9,6 +9,7 @@ interface Props {
   onCancel: () => void;
   confirmText?: string;
   cancelText?: string;
+  variant?: "primary" | "danger";
 }
 /**
  * Confirmation Modal Component
@@ -24,7 +25,12 @@ export default function ConfirmationModal({
   onCancel,
   confirmText = "Confirm",
   cancelText = "Cancel",
+  variant = "primary",
 }: Props) {
+  const confirmClass =
+    variant === "danger"
+      ? "px-6 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-all duration-200 shadow-md hover:shadow-lg"
+      : "px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg";
   return (
     <AnimatePresence>
       {isOpen && (
@@ -56,10 +62,7 @@ export default function ConfirmationModal({
                 >
                   {cancelText}
                 </button>
-                <button
-                  onClick={onConfirm}
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
-                >
+                <button onClick={onConfirm} className={confirmClass}>
                   {confirmText}
                 </button>
               </div>

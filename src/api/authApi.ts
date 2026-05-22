@@ -47,15 +47,11 @@ export const login = async (
 /**
  * Send password reset email
  */
-export const forgotPassword =
-  async (
-    payload: ForgotPasswordRequestDTO
-  ): Promise<void> => {
-    await apiClient.post(
-      "/auth/password/forgot",
-      payload
-    );
-  };
+export const forgotPassword = async (
+  payload: ForgotPasswordRequestDTO
+): Promise<void> => {
+  await apiClient.post("/auth/forgot-password", payload);
+};
 
 /* -------------------------------------------------------------------------- */
 /*                               RESET PASSWORD                               */
@@ -64,15 +60,11 @@ export const forgotPassword =
 /**
  * Reset password using token
  */
-export const resetPassword =
-  async (
-    payload: ResetPasswordRequestDTO
-  ): Promise<void> => {
-    await apiClient.post(
-      "/auth/password/reset",
-      payload
-    );
-  };
+export const resetPassword = async (
+  payload: ResetPasswordRequestDTO
+): Promise<void> => {
+  await apiClient.post("/auth/reset-password", payload);
+};
 
 /* -------------------------------------------------------------------------- */
 /*                                CURRENT USER                                */

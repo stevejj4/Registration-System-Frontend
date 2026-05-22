@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { memberApi } from '@/api/memberApi';
 import * as adminApi from '@/api/adminApi'; // ✅ import all exported functions
 import { useApiCall } from '@/hooks/useApiCall';
-import { useAuth } from '@/context/AuthContext'; // ✅ make sure you have AuthContext.tsx
+import { useAuth } from "@/hooks/useAuth";
 
 // Types
 export interface DashboardStats {
@@ -27,14 +27,14 @@ export interface RecentActivity {
  * - Exposes stats, recent activity, loading, error, and refresh.
  */
 export const useDashboard = () => {
-  const { role } = useAuth(); // e.g. 'ADMIN' | 'COORDINATOR' | 'FACILITATOR'
+  const { hasRole } = useAuth(); // e.g. 'ADMIN' | 'COORDINATOR' | 'FACILITATOR'
 
   const [stats, setStats] = useState<DashboardStats>({});
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
 
   const { loading, error, execute: fetchData } = useApiCall(
     async () => {
-      if (role === 'ADMIN') {
+      if (hasRole('ADMIN')) {
         // 🔹 Admin dashboard: fetch system users
         const users = await adminApi.getUsers();
         const totalUsers = users.length;
@@ -100,7 +100,7 @@ export const useDashboard = () => {
   // Fetch data on mount and when role changes
   useEffect(() => {
     fetchData();
-  }, [role]);
+  }, [hasRole]);
 
   const refresh = () => {
     fetchData();
