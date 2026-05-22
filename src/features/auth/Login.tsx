@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/Button';
-import TextInput from '@/components/ui/TextInput';
+import React, { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/Button";
+import TextInput from "@/components/ui/TextInput";
+import { useNavigate } from "react-router-dom";
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,10 +19,10 @@ export const Login: React.FC = () => {
     setLoading(true);
     try {
       await login({ email, password });
-      // simple redirect to root
-      window.location.href = '/';
+      // redirect to root using React Router
+      navigate("/");
     } catch (err: any) {
-      setError(err?.message || 'Login failed');
+      setError(err?.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -30,14 +33,32 @@ export const Login: React.FC = () => {
       <h2 className="text-2xl font-semibold mb-4">Sign in</h2>
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
-          <TextInput value={email} onChange={(value) => setEmail(value)} label="Email" type="email" required />
+          <TextInput
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            label="Email"
+            type="email"
+            autoComplete="email"
+            required
+            disabled={loading}
+          />
         </div>
         <div className="mb-3">
-          <TextInput value={password} onChange={(value) => setPassword(value)} label="Password" type="password" required />
+          <TextInput
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            label="Password"
+            type="password"
+            autoComplete="current-password"
+            required
+            disabled={loading}
+          />
         </div>
         {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
         <div className="flex justify-end">
-          <Button type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign in'}</Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? "Signing in..." : "Sign in"}
+          </Button>
         </div>
       </form>
     </div>

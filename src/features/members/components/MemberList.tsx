@@ -1,30 +1,40 @@
-import React, { useState, useEffect } from "react";
-// memberApi not used here; using `useMembers` hook instead
-import { MemberListItem } from "@/types/member";
+import React, { useState } from "react";
 import { Search, RefreshCw, Edit2 } from "lucide-react";
-import { motion } from "motion/react";
-import { filterMembers } from "@/utils/helpers";
-import { useMembers } from '@/features/members';
+import { motion } from "framer-motion";
+import { useMembers } from "@/features/members";
+import { useNavigate, useParams } from "react-router-dom";
 
 interface Props {
   onSelectMember: (id: string) => void;
   selectedId?: string;
 }
+
 /**
- * MemberList component displays a searchable and interactive list of members. It fetches member data from the API, allows users to search by name, group, or phone number, and highlights the selected member. The component also handles loading and error states gracefully, providing feedback to the user.
- * - onSelectMember: Callback function triggered when a member is selected, passing the member's ID.
- * - selectedId: Optional prop to indicate which member is currently selected, allowing for UI highlighting.
+ * MemberList component displays a searchable and interactive list of members.
  */
 export default function MemberList({ onSelectMember, selectedId }: Props) {
+  const navigate = useNavigate();
+  const { id: routeId } = useParams();
+
   const { members, loading, error, refetch } = useMembers();
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    // Ensure members are fetched on mount (useMembers already triggers a fetch), but keep for safety if refetch needed
-    if (refetch) refetch();
-  }, []);
+  const filteredMembers = members.filter((m) =>
+    [m.firstName, m.lastName, m.groupName, m.phoneNumber]
+      .join(" ")
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
+  );
 
-  const filteredMembers = filterMembers(members, searchTerm);
+  const activeId = selectedId ?? routeId;
+
+  const handleSelect = (id: string | number) => {
+    if (onSelectMember) {
+      onSelectMember(String(id));
+    } else {
+      navigate(`/members/${id}`);
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -37,14 +47,14 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
             placeholder="Search by name, group, or phone..."
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm placeholder:text-gray-400"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)} // Update search term on input change
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <button 
-          onClick={() => refetch && refetch()}
+        <button
+          onClick={() => refetch()}
           className="p-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors shadow-sm"
         >
-          <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
         </button>
       </div>
 
@@ -65,7 +75,9 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-gray-400 font-medium">Loading principal records...</td>
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-400 font-medium">
+                  Loading principal records...
+                </td>
               </tr>
             ) : error ? (
               <tr>
@@ -76,18 +88,18 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
                 <td colSpan={7} className="px-6 py-12 text-center text-gray-400 font-medium">No members found</td>
               </tr>
             ) : (
-              filteredMembers.map((member) => ( // Map over filtered members to display in the table
+              filteredMembers.map((member) => (
                 <motion.tr
                   key={member.id}
-                  initial={{ opacity: 0 }} // Animate row appearance
+                  initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   whileHover={{ backgroundColor: "#f9fafb" }}
                   className={`border-b border-gray-100 cursor-pointer transition-colors ${
-                    selectedId === member.id ? 'bg-blue-50' : ''
+                    activeId === String(member.id) ? "bg-blue-50" : ""
                   }`}
-                  onClick={() => onSelectMember(member.id)}
+                  onClick={() => handleSelect(member.id)}
                 >
-                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">{member.id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">{member.id}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{member.nationalID}</td>
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">
@@ -101,7 +113,7 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onSelectMember(member.id);
+                        handleSelect(member.id);
                       }}
                       className="inline-flex items-center justify-center p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
                     >

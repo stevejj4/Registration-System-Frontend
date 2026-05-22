@@ -1,3 +1,4 @@
+import { RegisterUserDTO, UserRole } from 'src/types/auth';
 import { apiClient, handleError } from './client';
 
 /**
@@ -52,7 +53,7 @@ export const getUserById = async (id: string): Promise<SystemUser> => {
  * Routes to POST /api/admin/user/register
  */
 export const registerUser = async (
-  data: Omit<SystemUser, 'id'>
+  data: RegisterUserDTO
 ): Promise<SystemUser> => {
   try {
     const res = await apiClient.post('/admin/register', data);
@@ -117,6 +118,23 @@ export const resetUserPassword = async (
     });
   } catch (error) {
     handleError(error, 'Failed to reset user password');
+    throw error;
+  }
+};
+/**
+ * Update a system user's role.
+ * Routes to PUT /api/admin/users/{userId}/role
+ */
+export const updateUserRole = async (
+  userId: string,
+  newRole: string
+): Promise<void> => {
+  if (!userId) throw new Error('User ID is required');
+  if (!newRole) throw new Error('New role is required');
+  try {
+    await apiClient.put(`/admin/users/${userId}/role`, { role: newRole });
+  } catch (error) {
+    handleError(error, 'Failed to update user role');
     throw error;
   }
 };

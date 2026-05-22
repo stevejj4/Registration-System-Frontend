@@ -1,73 +1,94 @@
 import { useState, useEffect } from 'react';
 import { memberApi } from '@/api/memberApi';
-import { MemberListItemDTO } from '@/types/member';
+import * as adminApi from '@/api/adminApi'; // ✅ import all exported functions
 import { useApiCall } from '@/hooks/useApiCall';
+import { useAuth } from '@/context/AuthContext'; // ✅ make sure you have AuthContext.tsx
 
-//  Dashboard statistics and recent activity types
+// Types
 export interface DashboardStats {
-  totalMembers: number;
-  newThisMonth: number;
-  activeGroups: number;
-  pending: number;
+  totalMembers?: number;   // for non-admin roles
+  newThisMonth?: number;
+  activeGroups?: number;
+  pending?: number;
+  totalUsers?: number;     // for Admin role
 }
 
-// Recent activity type
 export interface RecentActivity {
   id: string;
-  type: 'registration' | 'update' | 'group';
+  type: 'registration' | 'update' | 'group' | 'user';
   description: string;
   timestamp: string;
 }
-// Custom hook to manage dashboard data
+
+/**
+ * Custom hook to manage dashboard data.
+ * - Admins see system users (via adminApi).
+ * - Coordinators/Facilitators see members (via memberApi).
+ * - Exposes stats, recent activity, loading, error, and refresh.
+ */
 export const useDashboard = () => {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalMembers: 0,
-    newThisMonth: 0,
-    activeGroups: 0,
-    pending: 0,
-  });
- // 
+  const { role } = useAuth(); // e.g. 'ADMIN' | 'COORDINATOR' | 'FACILITATOR'
+
+  const [stats, setStats] = useState<DashboardStats>({});
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
 
-  const { loading, error, execute: fetchMembers } = useApiCall(
+  const { loading, error, execute: fetchData } = useApiCall(
     async () => {
-      const members = await memberApi.getAll();
+      if (role === 'ADMIN') {
+        // 🔹 Admin dashboard: fetch system users
+        const users = await adminApi.getUsers();
+        const totalUsers = users.length;
 
-      // Calculate statistics
-      const totalMembers = members.length;
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
+        const activities: RecentActivity[] = users
+          .slice(-5)
+          .reverse()
+          .map((user: adminApi.SystemUser, index: number) => ({
+            id: `user-activity-${index}`,
+            type: 'user',
+            description: `System user added: ${user.fullName}`,
+            timestamp: (user as any).createdAt ?? new Date().toISOString(), // ensure SystemUser has createdAt
+          }));
 
-      const newThisMonth = members.filter(member => {
-        const regDate = new Date(member.registrationDate);
-        return regDate.getMonth() === currentMonth && regDate.getFullYear() === currentYear;
-      }).length;
+        return {
+          stats: { totalUsers },
+          activities,
+        };
+      } else {
+        // 🔹 Member dashboard: fetch members
+        const members = await memberApi.getAll();
 
-      const groups = new Set(members.map(member => member.groupName));
-      const activeGroups = groups.size;
+        const totalMembers = members.length;
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
 
-      const pending = 0;
+        const newThisMonth = members.filter((member: any) => {
+          const regDate = new Date(member.registrationDate);
+          return (
+            regDate.getMonth() === currentMonth &&
+            regDate.getFullYear() === currentYear
+          );
+        }).length;
 
-      // Build recent activity
-      const activities: RecentActivity[] = members
-        .slice(-5)
-        .reverse()
-        .map((member, index) => ({
-          id: `activity-${index}`,
-          type: 'registration' as const,
-          description: `New member registered: ${member.firstName} ${member.lastName}`,
-          timestamp: member.registrationDate,
-        }));
+        const groups = new Set(members.map((member: any) => member.groupName));
+        const activeGroups = groups.size;
 
-      return {
-        stats: {
-          totalMembers,
-          newThisMonth,
-          activeGroups,
-          pending,
-        },
-        activities,
-      };
+        const pending = 0; // placeholder until you add pending logic
+
+        const activities: RecentActivity[] = members
+          .slice(-5)
+          .reverse()
+          .map((member: any, index: number) => ({
+            id: `member-activity-${index}`,
+            type: 'registration',
+            description: `New member registered: ${member.firstName} ${member.lastName}`,
+            timestamp: member.registrationDate,
+          }));
+
+        return {
+          stats: { totalMembers, newThisMonth, activeGroups, pending },
+          activities,
+        };
+      }
     },
     (data: { stats: DashboardStats; activities: RecentActivity[] }) => {
       setStats(data.stats);
@@ -76,12 +97,13 @@ export const useDashboard = () => {
     (err) => console.error('Failed to fetch dashboard data:', err)
   );
 
+  // Fetch data on mount and when role changes
   useEffect(() => {
-    fetchMembers();
-  }, []); // Empty dependency array - run only on mount
+    fetchData();
+  }, [role]);
 
   const refresh = () => {
-    fetchMembers();
+    fetchData();
   };
 
   return {
