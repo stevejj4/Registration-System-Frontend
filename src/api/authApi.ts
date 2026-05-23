@@ -36,7 +36,7 @@ export const login = async (
     setAuthToken(data.token);
   }
 
-  return data;
+  return data; // Return the entire response data, which includes both the token and user information, to allow components to access all relevant authentication details without needing to make an additional API call to fetch the user profile.
 };
 
 
@@ -49,8 +49,12 @@ export const login = async (
  */
 export const forgotPassword = async (
   payload: ForgotPasswordRequestDTO
-): Promise<void> => {
-  await apiClient.post("/auth/forgot-password", payload);
+): Promise<string> => {
+  const res = await apiClient.post<{ message: string }>(
+    "/v1/auth/forgot-password",
+    payload
+  );
+  return res.data?.message ?? "If an account exists for that email, a verification code has been sent.";
 };
 
 /* -------------------------------------------------------------------------- */
@@ -62,8 +66,12 @@ export const forgotPassword = async (
  */
 export const resetPassword = async (
   payload: ResetPasswordRequestDTO
-): Promise<void> => {
-  await apiClient.post("/auth/reset-password", payload);
+): Promise<string> => {
+  const res = await apiClient.post<{ message: string }>(
+    "/v1/auth/reset-password",
+    payload
+  );
+  return res.data?.message ?? "Password successfully reset.";
 };
 
 /* -------------------------------------------------------------------------- */

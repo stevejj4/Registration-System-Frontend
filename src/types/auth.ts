@@ -49,15 +49,25 @@ export interface AuthUser {
 }
 
 /**
- * Register User Request
+ * Admin-provisioned user (server generates password and emails credentials).
  */
+export interface CreateUserRequestDTO {
+  firstName: string;
+  lastName: string;
+  email: string;
+  assignedRole: UserRole;
+}
+
+export interface CreateUserResponseDTO {
+  user: UserDTO;
+  message: string;
+}
+
+/** @deprecated Use CreateUserRequestDTO */
 export interface RegisterUserDTO {
   email: string;
-
   fullName: string;
-
   password: string;
-
   role: UserRole;
 }
 
@@ -82,10 +92,14 @@ export interface ForgotPasswordRequestDTO {
 }
 
 /**
- * Reset Password Request
+ * Reset Password Request (6-digit OTP)
  */
 export interface ResetPasswordRequestDTO {
-  token: string;
-
+  email: string;
+  code: string;
   newPassword: string;
+}
+
+export interface MessageResponseDTO {
+  message: string;
 }

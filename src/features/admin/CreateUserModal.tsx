@@ -1,15 +1,10 @@
 import React, { useState } from "react";
 import Modal from "@/components/ui/Modal";
 import TextInput from "@/components/ui/TextInput";
-import PasswordInput from "@/components/ui/PasswordInput";
 import SelectInput from "@/components/ui/SelectInput";
 import { Button } from "@/components/ui/Button";
-import { RegisterUserDTO, UserRole } from "@/types/auth";
-import {
-  isValidEmail,
-  isDuplicateEmail,
-  validatePasswordMinLength,
-} from "@/utils/validation";
+import { CreateUserRequestDTO, UserRole } from "@/types/auth";
+import { isValidEmail, isDuplicateEmail } from "@/utils/validation";
 
 const ASSIGNABLE_ROLES: { value: UserRole; label: string }[] = [
   { value: "FACILITATOR", label: "Facilitator" },
@@ -19,7 +14,7 @@ const ASSIGNABLE_ROLES: { value: UserRole; label: string }[] = [
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: RegisterUserDTO) => Promise<void>;
+  onSubmit: (data: CreateUserRequestDTO) => Promise<void>;
   existingEmails: string[];
 }
 
@@ -29,18 +24,18 @@ export default function CreateUserModal({
   onSubmit,
   existingEmails,
 }: Props) {
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("FACILITATOR");
+  const [assignedRole, setAssignedRole] = useState<UserRole>("FACILITATOR");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const resetForm = () => {
-    setFullName("");
+    setFirstName("");
+    setLastName("");
     setEmail("");
-    setPassword("");
-    setRole("FACILITATOR");
+    setAssignedRole("FACILITATOR");
     setErrors({});
   };
 
@@ -54,19 +49,19 @@ export default function CreateUserModal({
   const validate = (): boolean => {
     const next: Record<string, string> = {};
 
-    if (!fullName.trim()) {
-      next.fullName = "Full name is required.";
+    if (!firstName.trim()) {
+      next.firstName = "First name is required.";
+    }
+    if (!lastName.trim()) {
+      next.lastName = "Last name is required.";
     }
     if (!isValidEmail(email)) {
       next.email = "Enter a valid email address.";
     } else if (isDuplicateEmail(email, existingEmails)) {
       next.email = "This email is already registered.";
     }
-    if (!validatePasswordMinLength(password)) {
-      next.password = "Password must be at least 8 characters.";
-    }
-    if (!role) {
-      next.role = "Select a system role.";
+    if (!assignedRole) {
+      next.assignedRole = "Select a system role.";
     }
 
     setErrors(next);
@@ -80,10 +75,10 @@ export default function CreateUserModal({
     setLoading(true);
     try {
       await onSubmit({
-        fullName: fullName.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         email: email.trim(),
-        password,
-        role,
+        assignedRole,
       });
       resetForm();
       onClose();
@@ -117,14 +112,24 @@ export default function CreateUserModal({
       }
     >
       <form id="create-user-form" onSubmit={handleSubmit} className="space-y-4">
-        <TextInput
-          label="Full name"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          error={errors.fullName}
-          disabled={loading}
-          required
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <TextInput
+            label="First name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            error={errors.firstName}
+            disabled={loading}
+            required
+          />
+          <TextInput
+            label="Last name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            error={errors.lastName}
+            disabled={loading}
+            required
+          />
+        </div>
         <TextInput
           label="Email"
           type="email"
@@ -134,27 +139,20 @@ export default function CreateUserModal({
           disabled={loading}
           required
         />
-        <PasswordInput
-          label="Temporary password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          error={errors.password}
-          disabled={loading}
-          required
-        />
         <SelectInput
           label="System role"
-          value={role}
-          onChange={(v) => setRole(v as UserRole)}
+          value={assignedRole}
+          onChange={(v) => setAssignedRole(v as UserRole)}
           options={ASSIGNABLE_ROLES.map((r) => ({
             value: r.value,
             label: r.label,
           }))}
-          error={errors.role}
+          error={errors.assignedRole}
           disabled={loading}
         />
         <p className="text-xs text-gray-500">
-          Admins can register facilitator and coordinator accounts only.
+          A secure temporary password will be generated and emailed to the user automatically.
+          Only Coordinators and Facilitators can be created here.
         </p>
       </form>
     </Modal>

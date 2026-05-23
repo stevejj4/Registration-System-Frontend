@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   getUsers,
   deleteUser,
-  registerUser,
+  createUser,
   resetUserPassword,
   updateUserRole,
   SystemUser,
@@ -75,11 +75,11 @@ export default function UserList() {
     [users]
   );
 
-  const handleCreate = async (data: Parameters<typeof registerUser>[0]) => {
+  const handleCreate = async (data: Parameters<typeof createUser>[0]) => {
     setError(null);
     try {
-      const newUser = await registerUser(data);
-      setUsers((prev) => [...prev, newUser]);
+      const result = await createUser(data);
+      setUsers((prev) => [...prev, result.user]);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Create failed";
       setError(message);
