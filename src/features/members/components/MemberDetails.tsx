@@ -1,11 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { memberApi } from "@/api/memberApi";
 import { checkBackendConnectivity } from "@/api/client";
-import type { MemberDetails, Dependant, NextOfKin } from "@/types/member";
-import { ArrowLeft, Edit3, Save, X, Plus, Trash2, User, Users, Heart, ShieldCheck, Mail, Phone, Calendar, Hash, Briefcase } from "lucide-react";
+import type {
+  MemberDetailsDTO,
+  Dependant,
+  NextOfKinDTO,
+  PrincipalMemberDTO,
+} from "@/types/member";
+import { ArrowLeft, Edit3, Save, Plus, Trash2, User, Users, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import { Button } from "@/components/ui/Button";
+import HasRole from "@/components/HasRole";
+import HasPermission from "@/components/HasPermission";
+import { useAuth } from "@/hooks/useAuth";
+import { PERMISSIONS } from "@/types/permissions";
+import { tryValidateId, validateId } from "@/utils/apiValidation";
+import {
+  relationshipToDisplayText,
+  genderToDisplayText,
+  displayTextToRelationship,
+} from "@/utils/helpers";
 
 interface Props {
   memberId: string;
@@ -13,6 +28,27 @@ interface Props {
 }
 
 type TabType = "principal" | "nok" | "dependants";
+
+type PrincipalFormState = {
+  principal: {
+    firstName: string;
+    lastName: string;
+    nationalID: string;
+    phoneNumber: string;
+    dateOfBirth: string;
+    groupName: string;
+    gender: PrincipalMemberDTO["gender"];
+  };
+};
+
+type NokFormState = {
+  firstName: string;
+  lastName: string;
+  relationship: string;
+  idNumber: string;
+  phoneNumber: string;
+  dateOfBirth: string;
+};
 
 /**
  * MemberDetails component displays detailed information about a specific member, including their principal details, next of kin, and dependants.
@@ -28,30 +64,59 @@ type TabType = "principal" | "nok" | "dependants";
  */
 
 export default function MemberDetails({ memberId, onBack }: Props) {
-  const [member, setMember] = useState<MemberDetails | null>(null);
+  const { hasRole } = useAuth();
+  const canManageKinAndDependants =
+    hasRole("COORDINATOR") || hasRole("ADMIN");
+  const routeMemberId = useMemo(() => tryValidateId(memberId), [memberId]);
+
+  const [member, setMember] = useState<MemberDetailsDTO | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("principal");
   const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState<any>(null);
+  const [formData, setFormData] = useState<
+    PrincipalFormState | NokFormState | null
+  >(null);
   const [toast, setToast] = useState<string | null>(null);
   const [editingDependant, setEditingDependant] = useState<string | null>(null);
   const [dependantFormData, setDependantFormData] = useState<Partial<Dependant>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmType, setConfirmType] = useState<"member" | "nok" | null>(null);
 
-  const fetchMember = async () => {
-    try {
-      const data = await memberApi.getById(memberId);
-      setMember(data);
+  const resolvePrincipalId = useCallback((): number | null => {
+    const fromPrincipal = tryValidateId(member?.principal?.id);
+    return fromPrincipal ?? routeMemberId;
+  }, [member?.principal?.id, routeMemberId]);
+
+  const requirePrincipalId = useCallback((): number => {
+    const id = resolvePrincipalId();
+    return validateId(id, "principal member ID");
+  }, [resolvePrincipalId]);
+
+  const fetchMember = useCallback(async () => {
+    if (!routeMemberId) {
+      setLoadError("Invalid member ID in URL.");
       setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await memberApi.getById(routeMemberId);
+      setMember(data);
     } catch (err) {
+      setLoadError(
+        err instanceof Error ? err.message : "Failed to load member details"
+      );
+    } finally {
       setLoading(false);
     }
-  };
+  }, [routeMemberId]);
 
   useEffect(() => {
     fetchMember();
-  }, [memberId]);
+  }, [fetchMember]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -61,73 +126,107 @@ export default function MemberDetails({ memberId, onBack }: Props) {
   const handleSave = async () => {
     if (!member || !formData) return;
 
+    let principalId: number;
+    try {
+      principalId = requirePrincipalId();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Invalid member ID");
+      return;
+    }
+
     try {
       const isBackendConnected = await checkBackendConnectivity();
       if (!isBackendConnected) {
-        throw new Error('Server is currently unavailable. Please try again later.');
+        throw new Error(
+          "Server is currently unavailable. Please try again later."
+        );
       }
 
-      if (activeTab === "principal") {
-        // Check that all required fields are filled
-        if (!formData.principal.firstName.trim() || 
-            !formData.principal.lastName.trim() || 
-            !formData.principal.nationalID.trim() || 
-            !formData.principal.phoneNumber.trim() || 
-            !formData.principal.dateOfBirth.trim() ||
-            !formData.principal.groupName.trim()) {
+      if (activeTab === "principal" && "principal" in formData) {
+        const p = formData.principal;
+        if (
+          !p.firstName.trim() ||
+          !p.lastName.trim() ||
+          !p.nationalID.trim() ||
+          !p.phoneNumber.trim() ||
+          !p.dateOfBirth.trim() ||
+          !p.groupName.trim()
+        ) {
           showToast("Please fill in all required fields");
           return;
         }
-        // Send the update to the backend
-        await memberApi.updatePrincipal(member.id, formData.principal);
+
+        const updated = await memberApi.updatePrincipal(
+          principalId,
+          { ...member.principal, ...p },
+          member
+        );
+        setMember(updated);
         showToast("Principal Info Updated");
-      } else if (activeTab === "nok") {
-        // Make sure next of kin fields are filled
-        if (!formData.firstName.trim() || 
-            !formData.lastName.trim() || 
-            !formData.relationship.trim() || 
-            !formData.idNumber.trim() || 
-            !formData.phoneNumber.trim() || 
-            !formData.dateOfBirth.trim()) {
+      } else if (activeTab === "nok" && "firstName" in formData) {
+        const nok = formData;
+        if (
+          !nok.firstName.trim() ||
+          !nok.lastName.trim() ||
+          !nok.relationship.trim() ||
+          !nok.idNumber.trim() ||
+          !nok.phoneNumber.trim() ||
+          !nok.dateOfBirth.trim()
+        ) {
           showToast("Please fill in all required fields");
           return;
         }
-        // Update next of kin info
-        await memberApi.patchNextOfKin(member.id, formData);
+
+        const payload: Partial<NextOfKinDTO> = {
+          ...member.nextOfKin,
+          firstName: nok.firstName.trim(),
+          lastName: nok.lastName.trim(),
+          relationship: displayTextToRelationship(nok.relationship),
+          idNumber: nok.idNumber.trim(),
+          phoneNumber: nok.phoneNumber.trim(),
+          dateOfBirth: nok.dateOfBirth.trim(),
+          gender: member.nextOfKin?.gender ?? "OTHER",
+        };
+
+        const updated = await memberApi.patchNextOfKin(principalId, payload, member);
+        setMember(updated);
         showToast("Next of Kin Updated");
       }
+
       setEditMode(false);
       setFormData(null);
-      fetchMember();
     } catch (error) {
       console.error("Failed to save:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to save changes";
-      showToast(errorMessage);
+      showToast(
+        error instanceof Error ? error.message : "Failed to save changes"
+      );
     }
   };
 
   const handleEdit = () => {
+    if (!member) return;
     setEditMode(true);
+
     if (activeTab === "principal") {
       setFormData({
         principal: {
-          firstName: member?.principal.firstName,
-          lastName: member?.principal.lastName,
-          nationalID: member?.principal.nationalID,
-          phoneNumber: member?.principal.phoneNumber,
-          dateOfBirth: member?.principal.dateOfBirth,
-          groupName: member?.principal.groupName,
+          firstName: member.principal.firstName ?? "",
+          lastName: member.principal.lastName ?? "",
+          nationalID: member.principal.nationalID ?? "",
+          phoneNumber: member.principal.phoneNumber ?? "",
+          dateOfBirth: member.principal.dateOfBirth ?? "",
+          groupName: member.principal.groupName ?? "",
+          gender: member.principal.gender,
         },
       });
-    } else if (activeTab === "nok") {
-      // Load next of kin data into the form
+    } else if (activeTab === "nok" && member.nextOfKin) {
       setFormData({
-        firstName: member?.nextOfKin?.firstName || "",
-        lastName: member?.nextOfKin?.lastName || "",
-        relationship: member?.nextOfKin?.relationship || "",
-        idNumber: member?.nextOfKin?.idNumber || "",
-        phoneNumber: member?.nextOfKin?.phoneNumber || "",
-        dateOfBirth: member?.nextOfKin?.dateOfBirth || "",
+        firstName: member.nextOfKin.firstName ?? "",
+        lastName: member.nextOfKin.lastName ?? "",
+        relationship: relationshipToDisplayText(member.nextOfKin.relationship),
+        idNumber: member.nextOfKin.idNumber ?? "",
+        phoneNumber: member.nextOfKin.phoneNumber ?? "",
+        dateOfBirth: member.nextOfKin.dateOfBirth ?? "",
       });
     }
   };
@@ -145,14 +244,25 @@ export default function MemberDetails({ memberId, onBack }: Props) {
   const handleConfirm = async () => {
     if (!member || !confirmType) return;
 
+    let principalId: number;
+    try {
+      principalId = requirePrincipalId();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Invalid member ID");
+      setConfirmOpen(false);
+      return;
+    }
+
     try {
       const isBackendConnected = await checkBackendConnectivity();
       if (!isBackendConnected) {
-        throw new Error('Server is currently unavailable. Please try again later.');
+        throw new Error(
+          "Server is currently unavailable. Please try again later."
+        );
       }
 
       if (confirmType === "member") {
-        await memberApi.deleteMember(member.id);
+        await memberApi.deleteMember(principalId);
         showToast("Member Deleted");
         setConfirmOpen(false);
         onBack();
@@ -160,16 +270,15 @@ export default function MemberDetails({ memberId, onBack }: Props) {
       }
 
       if (confirmType === "nok") {
-        await memberApi.deleteNextOfKin(member.id);
+        const updated = await memberApi.deleteNextOfKin(principalId, member);
+        setMember(updated);
         showToast("Next of Kin Deleted");
         setConfirmOpen(false);
-        fetchMember();
         return;
       }
     } catch (error) {
       console.error("Delete action failed:", error);
-      const errorMessage = error instanceof Error ? error.message : "Delete failed";
-      showToast(errorMessage);
+      showToast(error instanceof Error ? error.message : "Delete failed");
       setConfirmOpen(false);
     }
   };
@@ -182,53 +291,44 @@ export default function MemberDetails({ memberId, onBack }: Props) {
   const handleAddDependant = async (data: Omit<Dependant, "id">) => {
     if (!member) return;
     try {
+      const principalId = requirePrincipalId();
       const isBackendConnected = await checkBackendConnectivity();
       if (!isBackendConnected) {
-        throw new Error('Server is currently unavailable. Please try again later.');
+        throw new Error(
+          "Server is currently unavailable. Please try again later."
+        );
       }
-      
-      await memberApi.addDependant(member.id, data);
+
+      const updated = await memberApi.addDependant(principalId, data, member);
+      setMember(updated);
       showToast("Dependant Added");
-      fetchMember();
     } catch (error) {
       console.error("Failed to add dependant:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to add dependant";
-      showToast(errorMessage);
-    }
-  };
-
-  const handleUpdateDependant = async (dependantId: string, data: Partial<Dependant>) => {
-    try {
-      const isBackendConnected = await checkBackendConnectivity();
-      if (!isBackendConnected) {
-        throw new Error('Server is currently unavailable. Please try again later.');
-      }
-      
-      await memberApi.updateDependant(dependantId, data);
-      showToast("Dependant Updated");
-      fetchMember();
-    } catch (error) {
-      console.error("Failed to update dependant:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to update dependant";
-      showToast(errorMessage);
+      showToast(
+        error instanceof Error ? error.message : "Failed to add dependant"
+      );
     }
   };
 
   const handleDeleteDependant = async (dependantId: string) => {
     if (!member) return;
     try {
+      const principalId = requirePrincipalId();
       const isBackendConnected = await checkBackendConnectivity();
       if (!isBackendConnected) {
-        throw new Error('Server is currently unavailable. Please try again later.');
+        throw new Error(
+          "Server is currently unavailable. Please try again later."
+        );
       }
-      
-      await memberApi.deleteDependant(member.id, dependantId);
+
+      const updated = await memberApi.deleteDependant(principalId, dependantId, member);
+      setMember(updated);
       showToast("Dependant Deleted");
-      fetchMember();
     } catch (error) {
       console.error("Failed to delete dependant:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to delete dependant";
-      showToast(errorMessage);
+      showToast(
+        error instanceof Error ? error.message : "Failed to delete dependant"
+      );
     }
   };
 
@@ -238,15 +338,24 @@ export default function MemberDetails({ memberId, onBack }: Props) {
   };
 
   const handleSaveDependant = async (dependantId: string) => {
+    if (!member) return;
     try {
-      await memberApi.updateDependant(dependantId, dependantFormData);
+      const principalId = requirePrincipalId();
+      const updated = await memberApi.patchDependant(
+        principalId,
+        dependantId,
+        dependantFormData,
+        member
+      );
+      setMember(updated);
       showToast("Dependant Updated");
       setEditingDependant(null);
       setDependantFormData({});
-      fetchMember();
     } catch (error) {
       console.error("Failed to update dependant:", error);
-      showToast("Failed to update dependant");
+      showToast(
+        error instanceof Error ? error.message : "Failed to update dependant"
+      );
     }
   };
 
@@ -263,6 +372,19 @@ export default function MemberDetails({ memberId, onBack }: Props) {
     );
   }
 
+  if (!routeMemberId || loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4">
+        <p className="text-gray-600">
+          {loadError ?? "Invalid member link. Return to the list and try again."}
+        </p>
+        <Button onClick={onBack} variant="outline">
+          Back to List
+        </Button>
+      </div>
+    );
+  }
+
   if (!member) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -270,6 +392,24 @@ export default function MemberDetails({ memberId, onBack }: Props) {
       </div>
     );
   }
+
+  const principalForm =
+    formData && "principal" in formData ? formData : null;
+  const nokForm = formData && "firstName" in formData ? formData : null;
+
+  const tabs: { id: TabType; label: string; icon: typeof User }[] = [
+    { id: "principal", label: "Principal Details", icon: User },
+    {
+      id: "nok",
+      label: "Next of Kin",
+      icon: Heart,
+    },
+    {
+      id: "dependants",
+      label: `Dependants (${member.dependants.length})`,
+      icon: Users,
+    },
+  ];
 
   return (
     <div className="p-6">
@@ -288,14 +428,34 @@ export default function MemberDetails({ memberId, onBack }: Props) {
           </div>
           {!editMode && (
             <div className="flex space-x-2">
-              <Button onClick={handleEdit} variant="primary" size="md">
-                <Edit3 className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
-              <Button onClick={openDeleteMemberModal} variant="danger" size="md">
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Member
-              </Button>
+              <HasPermission permissions={PERMISSIONS.MEMBER_WRITE}>
+                {activeTab === "principal" && (
+                  <Button onClick={handleEdit} variant="primary" size="md">
+                    <Edit3 className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </HasPermission>
+              {canManageKinAndDependants && (
+                <>
+                  {activeTab === "nok" && member.nextOfKin && (
+                    <Button onClick={handleEdit} variant="primary" size="md">
+                      <Edit3 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  )}
+                </>
+              )}
+              <HasRole roles={["ADMIN"]}>
+                <Button
+                  onClick={openDeleteMemberModal}
+                  variant="danger"
+                  size="md"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Member
+                </Button>
+              </HasRole>
             </div>
           )}
         </div>
@@ -304,14 +464,10 @@ export default function MemberDetails({ memberId, onBack }: Props) {
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex -mb-px">
-          {[
-            { id: "principal", label: "Principal Details", icon: User },
-            { id: "nok", label: "Next of Kin", icon: Heart },
-            { id: "dependants", label: `Dependants (${member.dependants.length})`, icon: Users },
-          ].map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as TabType)}
+              onClick={() => setActiveTab(tab.id)}
               className={`flex items-center px-1 py-4 border-b-2 font-medium text-sm ${
                 activeTab === tab.id
                   ? "border-blue-500 text-blue-600"
@@ -337,15 +493,19 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">First Name</label>
                     <input
                       type="text"
-                      value={formData?.principal?.firstName || ""}
+                      value={principalForm?.principal.firstName ?? ""}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          principal: {
-                            ...formData.principal,
-                            firstName: e.target.value,
-                          },
-                        })
+                        setFormData((prev) =>
+                          prev && "principal" in prev
+                            ? {
+                                ...prev,
+                                principal: {
+                                  ...prev.principal,
+                                  firstName: e.target.value,
+                                },
+                              }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -354,15 +514,19 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">Last Name</label>
                     <input
                       type="text"
-                      value={formData?.principal?.lastName || ""}
+                      value={principalForm?.principal.lastName ?? ""}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          principal: {
-                            ...formData.principal,
-                            lastName: e.target.value,
-                          },
-                        })
+                        setFormData((prev) =>
+                          prev && "principal" in prev
+                            ? {
+                                ...prev,
+                                principal: {
+                                  ...prev.principal,
+                                  lastName: e.target.value,
+                                },
+                              }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -371,15 +535,19 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">National ID</label>
                     <input
                       type="text"
-                      value={formData?.principal?.nationalID || ""}
+                      value={principalForm?.principal.nationalID ?? ""}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          principal: {
-                            ...formData.principal,
-                            nationalID: e.target.value,
-                          },
-                        })
+                        setFormData((prev) =>
+                          prev && "principal" in prev
+                            ? {
+                                ...prev,
+                                principal: {
+                                  ...prev.principal,
+                                  nationalID: e.target.value,
+                                },
+                              }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -388,15 +556,19 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">Phone Number</label>
                     <input
                       type="tel"
-                      value={formData?.principal?.phoneNumber || ""}
+                      value={principalForm?.principal.phoneNumber ?? ""}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          principal: {
-                            ...formData.principal,
-                            phoneNumber: e.target.value,
-                          },
-                        })
+                        setFormData((prev) =>
+                          prev && "principal" in prev
+                            ? {
+                                ...prev,
+                                principal: {
+                                  ...prev.principal,
+                                  phoneNumber: e.target.value,
+                                },
+                              }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -405,15 +577,19 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
                     <input
                       type="date"
-                      value={formData?.principal?.dateOfBirth || ""}
+                      value={principalForm?.principal.dateOfBirth ?? ""}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          principal: {
-                            ...formData.principal,
-                            dateOfBirth: e.target.value,
-                          },
-                        })
+                        setFormData((prev) =>
+                          prev && "principal" in prev
+                            ? {
+                                ...prev,
+                                principal: {
+                                  ...prev.principal,
+                                  dateOfBirth: e.target.value,
+                                },
+                              }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -422,15 +598,19 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">Group Name</label>
                     <input
                       type="text"
-                      value={formData?.principal?.groupName || ""}
+                      value={principalForm?.principal.groupName ?? ""}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          principal: {
-                            ...formData.principal,
-                            groupName: e.target.value,
-                          },
-                        })
+                        setFormData((prev) =>
+                          prev && "principal" in prev
+                            ? {
+                                ...prev,
+                                principal: {
+                                  ...prev.principal,
+                                  groupName: e.target.value,
+                                },
+                              }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -489,9 +669,13 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">First Name</label>
                     <input
                       type="text"
-                      value={formData?.firstName || ""}
+                      value={nokForm?.firstName ?? ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
+                        setFormData((prev) =>
+                          prev && "firstName" in prev
+                            ? { ...prev, firstName: e.target.value }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -500,9 +684,13 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">Last Name</label>
                     <input
                       type="text"
-                      value={formData?.lastName || ""}
+                      value={nokForm?.lastName ?? ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
+                        setFormData((prev) =>
+                          prev && "firstName" in prev
+                            ? { ...prev, lastName: e.target.value }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -511,9 +699,13 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">Relationship</label>
                     <input
                       type="text"
-                      value={formData?.relationship || ""}
+                      value={nokForm?.relationship ?? ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, relationship: e.target.value })
+                        setFormData((prev) =>
+                          prev && "firstName" in prev
+                            ? { ...prev, relationship: e.target.value }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -522,9 +714,13 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">ID Number</label>
                     <input
                       type="text"
-                      value={formData?.idNumber || ""}
+                      value={nokForm?.idNumber ?? ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, idNumber: e.target.value })
+                        setFormData((prev) =>
+                          prev && "firstName" in prev
+                            ? { ...prev, idNumber: e.target.value }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -533,9 +729,13 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">Phone Number</label>
                     <input
                       type="tel"
-                      value={formData?.phoneNumber || ""}
+                      value={nokForm?.phoneNumber ?? ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, phoneNumber: e.target.value })
+                        setFormData((prev) =>
+                          prev && "firstName" in prev
+                            ? { ...prev, phoneNumber: e.target.value }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -544,9 +744,13 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                     <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
                     <input
                       type="date"
-                      value={formData?.dateOfBirth || ""}
+                      value={nokForm?.dateOfBirth ?? ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, dateOfBirth: e.target.value })
+                        setFormData((prev) =>
+                          prev && "firstName" in prev
+                            ? { ...prev, dateOfBirth: e.target.value }
+                            : prev
+                        )
                       }
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -594,7 +798,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                 ) : (
                   <></>
                 )}
-                {member.nextOfKin && !editMode && (
+                {member.nextOfKin && !editMode && canManageKinAndDependants && (
                   <div className="mt-4 flex justify-end">
                     <Button onClick={openDeleteNokModal} variant="danger" size="sm">
                       <Trash2 className="w-4 h-4 mr-2" />
@@ -612,6 +816,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Dependants</h2>
+              {canManageKinAndDependants && (
               <Button
                 onClick={() => {
                   // Start with empty form data for user to fill in
@@ -632,6 +837,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                 <Plus className="w-4 h-4 mr-2" />
                 Add Dependant
               </Button>
+              )}
             </div>
             {member.dependants.length > 0 ? (
               <div className="space-y-4">
@@ -740,6 +946,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                             </div>
                           </div>
                         </div>
+                        {canManageKinAndDependants && (
                         <div className="flex space-x-2">
                           <Button onClick={() => handleEditDependant(dependant)} variant="outline" size="sm">
                             <Edit3 className="w-4 h-4" />
@@ -748,6 +955,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -760,7 +968,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
             )}
             
             {/* New Dependant Form */}
-            {editingDependant === "new" && (
+            {canManageKinAndDependants && editingDependant === "new" && (
               <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
                 <h3 className="font-medium text-gray-900 mb-4">Add New Dependant</h3>
                 <div className="space-y-4">

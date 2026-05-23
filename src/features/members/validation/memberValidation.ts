@@ -67,8 +67,8 @@ export function validatePrincipal(principal: PrincipalMemberDTO, errors: Validat
   if (!principal.nationalID.trim()) {
     newErrors.principalNationalID = "National ID is required";
     isValid = false;
-  } else if (!VALIDATION_RULES.NATIONAL_ID_REGEX.test(principal.nationalID)) {
-    newErrors.principalNationalID = ERROR_MESSAGES.INVALID_ID;
+  } else if (!VALIDATION_RULES.NATIONAL_ID_REGEX.test(principal.nationalID.trim())) {
+    newErrors.principalNationalID = ERROR_MESSAGES.INVALID_NATIONAL_ID_FORMAT;
     isValid = false;
   } else {
     newErrors.principalNationalID = null;
@@ -152,6 +152,9 @@ export function validateNextOfKin(nextOfKin: NextOfKinDTO, errors: ValidationErr
   // ID number validation
   if (!nextOfKin.idNumber.trim()) {
     newErrors.nextOfKinIdNumber = "ID number is required";
+    isValid = false;
+  } else if (!VALIDATION_RULES.NATIONAL_ID_REGEX.test(nextOfKin.idNumber.trim())) {
+    newErrors.nextOfKinIdNumber = ERROR_MESSAGES.INVALID_NATIONAL_ID_FORMAT;
     isValid = false;
   } else {
     newErrors.nextOfKinIdNumber = null;

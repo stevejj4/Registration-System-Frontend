@@ -48,7 +48,7 @@ export default function NextOfKinForm({ nextOfKin, onChange, errors }: Props) {
         <TextInput
           label="First Name"
           value={nextOfKin.firstName}
-          onChange={(value) => onChange({ ...nextOfKin, firstName: value })}
+          onChange={(e) => onChange({ ...nextOfKin, firstName: e.target.value })}
           placeholder="Enter first name"
           error={errors.nextOfKinFirstName}
         />
@@ -56,7 +56,7 @@ export default function NextOfKinForm({ nextOfKin, onChange, errors }: Props) {
         <TextInput
           label="Last Name"
           value={nextOfKin.lastName}
-          onChange={(value) => onChange({ ...nextOfKin, lastName: value })}
+          onChange={(e) => onChange({ ...nextOfKin, lastName: e.target.value })}
           placeholder="Enter last name"
           error={errors.nextOfKinLastName}
         />
@@ -86,7 +86,7 @@ export default function NextOfKinForm({ nextOfKin, onChange, errors }: Props) {
         <TextInput
           label="ID Number"
           value={nextOfKin.idNumber}
-          onChange={(value) => onChange({ ...nextOfKin, idNumber: value })}
+          onChange={(e) => onChange({ ...nextOfKin, idNumber: e.target.value })}
           placeholder="Enter ID number"
           error={errors.nextOfKinIdNumber}
         />
@@ -95,7 +95,7 @@ export default function NextOfKinForm({ nextOfKin, onChange, errors }: Props) {
           label="Phone Number"
           type="tel"
           value={nextOfKin.phoneNumber}
-          onChange={(value) => onChange({ ...nextOfKin, phoneNumber: value })}
+          onChange={(e) => onChange({ ...nextOfKin, phoneNumber: e.target.value })}
           placeholder="07XXXXXXXX"
           error={errors.nextOfKinPhoneNumber}
         />
@@ -109,8 +109,14 @@ export default function NextOfKinForm({ nextOfKin, onChange, errors }: Props) {
 
         <TextInput
           label="ID Attachment Path"
-          value={nextOfKin.idAttachmentPath || ''}
-          onChange={(value) => onChange({ ...nextOfKin, idAttachmentPath: value })}
+          value={
+            typeof nextOfKin.idAttachmentPath === "string"
+              ? nextOfKin.idAttachmentPath
+              : ""
+          }
+          onChange={(e) =>
+            onChange({ ...nextOfKin, idAttachmentPath: e.target.value })
+          }
           placeholder="uploads/ids/filename.png"
         />
         <div className="text-xs text-gray-500 mt-1">Optional: Path to ID attachment file</div>

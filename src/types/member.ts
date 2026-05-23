@@ -83,6 +83,7 @@ export interface RegisterMemberRequestDTO {
 
 /**
  * Full Member Details Response
+ * Backend serializes the principal as `member`; the mapper accepts both `member` and `principal`.
  */
 export interface MemberDetailsDTO {
   principal: PrincipalMemberDTO;
@@ -91,6 +92,9 @@ export interface MemberDetailsDTO {
 
   dependants: DependantDTO[];
 }
+
+/** @deprecated Use MemberDetailsDTO — kept for legacy imports */
+export type MemberDetails = MemberDetailsDTO;
 
 /**
  * Member List Item

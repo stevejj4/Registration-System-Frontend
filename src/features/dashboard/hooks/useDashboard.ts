@@ -27,7 +27,7 @@ export interface RecentActivity {
  * - Exposes stats, recent activity, loading, error, and refresh.
  */
 export const useDashboard = () => {
-  const { hasRole } = useAuth(); // e.g. 'ADMIN' | 'COORDINATOR' | 'FACILITATOR'
+  const { hasRole, hasPermission } = useAuth();
 
   const [stats, setStats] = useState<DashboardStats>({});
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
@@ -53,8 +53,7 @@ export const useDashboard = () => {
           stats: { totalUsers },
           activities,
         };
-      } else {
-        // 🔹 Member dashboard: fetch members
+      } else if (hasPermission("MEMBER_READ")) {
         const members = await memberApi.getAll();
 
         const totalMembers = members.length;
@@ -89,6 +88,8 @@ export const useDashboard = () => {
           activities,
         };
       }
+
+      return { stats: {}, activities: [] };
     },
     (data: { stats: DashboardStats; activities: RecentActivity[] }) => {
       setStats(data.stats);
@@ -100,7 +101,7 @@ export const useDashboard = () => {
   // Fetch data on mount and when role changes
   useEffect(() => {
     fetchData();
-  }, [hasRole]);
+  }, [hasRole, hasPermission]);
 
   const refresh = () => {
     fetchData();

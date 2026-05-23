@@ -29,7 +29,12 @@ export const PrincipalTab: React.FC<PrincipalTabProps> = ({ member, onUpdate }) 
     setError(null);
     
     try {
-      await memberApi.updatePrincipal(member.id, formData);
+      const principalId = member.principal.id;
+      if (!principalId) {
+        setError("Member ID is missing — cannot save.");
+        return;
+      }
+      await memberApi.updatePrincipal(principalId, { ...member.principal, ...formData }, member);
       setIsEditing(false);
       onUpdate();
     } catch (error) {

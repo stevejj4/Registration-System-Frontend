@@ -1,10 +1,11 @@
-// src/services/memberApi.ts
-
 import { apiClient, handleError } from "./client";
 import {
   mapMemberDetails,
   mapMemberListItem,
+  mapNextOfKin,
+  mapDependant,
 } from "@/features/members/mappers/memberMapper";
+import { validateId } from "@/utils/apiValidation";
 
 import type {
   MemberDetailsDTO,
@@ -15,70 +16,35 @@ import type {
   PrincipalMemberDTO,
 } from "@/types/member";
 
-/* -------------------------------------------------------------------------- */
-/*                              ROLE RESOLVER                                 */
-/* -------------------------------------------------------------------------- */
+const MEMBERS_BASE = "/v1/members";
 
-const getRole = (): string => {
-  const raw = localStorage.getItem("auth_user");
-
-  if (!raw) {
-    throw new Error("Not authenticated");
+const mapApiMemberResponse = (data: unknown): MemberDetailsDTO => {
+  if (!data || typeof data !== "object") {
+    return mapMemberDetails(data);
   }
 
-  let user: any;
+  const record = data as Record<string, unknown>;
 
-  try {
-    user = JSON.parse(raw);
-  } catch {
-    throw new Error("Malformed auth_user");
+  if ("firstName" in record && !("principal" in record) && !("member" in record)) {
+    return mapMemberDetails({ member: data });
   }
 
-  const role = user?.role;
-
-  if (!role) {
-    throw new Error("Invalid user role");
-  }
-
-  return role;
+  return mapMemberDetails(data);
 };
 
-/* -------------------------------------------------------------------------- */
-/*                         BASE ENDPOINT RESOLVER                             */
-/* -------------------------------------------------------------------------- */
-
-const getMembersBase = (): string => {
-  const role = getRole().toLowerCase();
-  return `/${role}/members`;
-};
-
-const getRegisterBase = (): string => {
-  const role = getRole().toLowerCase();
-
-  switch (role) {
-    case "admin":
-      return "/admin/members/register";
-
-    case "coordinator":
-      return "/coordinator/members/register";
-
-    case "facilitator":
-      return "/facilitator/register";
-
-    default:
-      throw new Error(`Unsupported role: ${role}`);
-  }
-};
-
-/* -------------------------------------------------------------------------- */
-/*                               MEMBER API                                   */
-/* -------------------------------------------------------------------------- */
+const mergePrincipalIntoMember = (
+  existing: MemberDetailsDTO | null | undefined,
+  principal: PrincipalMemberDTO
+): MemberDetailsDTO => ({
+  principal,
+  nextOfKin: existing?.nextOfKin ?? null,
+  dependants: existing?.dependants ?? [],
+});
 
 export const memberApi = {
-  /* ---------------------------- GET ALL MEMBERS --------------------------- */
   async getAll(): Promise<MemberListItemDTO[]> {
     try {
-      const res = await apiClient.get(getMembersBase());
+      const res = await apiClient.get(MEMBERS_BASE);
       return (res.data ?? []).map(mapMemberListItem);
     } catch (error) {
       handleError(error, "Failed to fetch members");
@@ -86,69 +52,69 @@ export const memberApi = {
     }
   },
 
-  /* --------------------------- GET MEMBER BY ID --------------------------- */
-  async getById(id: number): Promise<MemberDetailsDTO> {
+  async getById(id: number | string): Promise<MemberDetailsDTO> {
+    const memberId = validateId(id, "member ID");
+
     try {
-      const res = await apiClient.get(`${getMembersBase()}/${id}`);
-      return mapMemberDetails(res.data);
+      const res = await apiClient.get(`${MEMBERS_BASE}/${memberId}`);
+      return mapApiMemberResponse(res.data);
     } catch (error) {
       handleError(error, "Failed to fetch member");
       throw error;
     }
   },
 
-  /* ---------------------- GET BY NATIONAL ID ---------------------- */
   async getByNationalId(nationalId: string): Promise<MemberDetailsDTO> {
+    if (!nationalId?.trim()) {
+      throw new Error("National ID is required");
+    }
+
+    const encoded = encodeURIComponent(nationalId.trim());
+
     try {
-      const res = await apiClient.get(
-        `${getMembersBase()}/national-id/${nationalId}`
-      );
-      return mapMemberDetails(res.data);
+      const res = await apiClient.get(`${MEMBERS_BASE}/search/${encoded}`);
+      return mapApiMemberResponse(res.data);
     } catch (error) {
       handleError(error, "Failed to fetch by national ID");
       throw error;
     }
   },
 
-  /* ---------------------------- REGISTER MEMBER --------------------------- */
   async registerMember(
     payload: RegisterMemberRequestDTO
   ): Promise<MemberDetailsDTO> {
     try {
       const cleaned: RegisterMemberRequestDTO = {
-        principal: {
-          ...payload.principal,
-          id: undefined,
-        },
-        nextOfKin: {
-          ...payload.nextOfKin,
-          id: undefined,
-        },
+        principal: { ...payload.principal, id: undefined },
+        nextOfKin: { ...payload.nextOfKin, id: undefined },
         dependants: (payload.dependants ?? []).map((d: DependantDTO) => ({
           ...d,
           id: undefined,
         })),
       };
 
-      const res = await apiClient.post(getRegisterBase(), cleaned);
-      return mapMemberDetails(res.data);
+      const res = await apiClient.post(`${MEMBERS_BASE}/register`, cleaned);
+      return mapApiMemberResponse(res.data);
     } catch (error) {
       handleError(error, "Failed to register member");
       throw error;
     }
   },
 
-  /* ------------------------ UPDATE PRINCIPAL ---------------------- */
   async patchPrincipal(
-    id: number,
-    data: Partial<PrincipalMemberDTO>
+    id: number | string,
+    data: Partial<PrincipalMemberDTO>,
+    existing?: MemberDetailsDTO | null
   ): Promise<MemberDetailsDTO> {
+    const memberId = validateId(id, "principal member ID");
+
     try {
-      const res = await apiClient.patch(
-        `${getMembersBase()}/${id}`,
-        data
-      );
-      return mapMemberDetails(res.data);
+      const res = await apiClient.patch(`${MEMBERS_BASE}/${memberId}`, data);
+      const mapped = mapApiMemberResponse(res.data);
+      if (existing && mapped.principal && !mapped.nextOfKin && mapped.dependants.length === 0) {
+        return mergePrincipalIntoMember(existing, mapped.principal);
+      }
+      return mapped;
     } catch (error) {
       handleError(error, "Failed to update member");
       throw error;
@@ -156,41 +122,49 @@ export const memberApi = {
   },
 
   async updatePrincipal(
-    id: number,
-    data: PrincipalMemberDTO
+    id: number | string,
+    data: PrincipalMemberDTO,
+    existing?: MemberDetailsDTO | null
   ): Promise<MemberDetailsDTO> {
+    const memberId = validateId(id, "principal member ID");
+
     try {
-      const res = await apiClient.put(
-        `${getMembersBase()}/${id}`,
-        data
-      );
-      return mapMemberDetails(res.data);
+      const res = await apiClient.put(`${MEMBERS_BASE}/${memberId}`, data);
+      const mapped = mapApiMemberResponse(res.data);
+      if (existing && mapped.principal && !mapped.nextOfKin && mapped.dependants.length === 0) {
+        return mergePrincipalIntoMember(existing, mapped.principal);
+      }
+      return mapped;
     } catch (error) {
       handleError(error, "Failed to update member");
       throw error;
     }
   },
 
-  async deleteMember(id: number): Promise<void> {
+  async deleteMember(id: number | string): Promise<void> {
+    const memberId = validateId(id, "member ID");
+
     try {
-      await apiClient.delete(`${getMembersBase()}/${id}`);
+      await apiClient.delete(`${MEMBERS_BASE}/${memberId}`);
     } catch (error) {
       handleError(error, "Failed to delete member");
       throw error;
     }
   },
 
-  /* ----------------------------- NEXT OF KIN ------------------------------ */
   async updateNextOfKin(
-    principalId: number,
-    data: NextOfKinDTO
+    principalId: number | string,
+    data: NextOfKinDTO,
+    existing: MemberDetailsDTO
   ): Promise<MemberDetailsDTO> {
+    const pid = validateId(principalId, "principal ID");
+
     try {
-      const res = await apiClient.put(
-        `${getMembersBase()}/${principalId}/next-of-kin`,
-        data
-      );
-      return mapMemberDetails(res.data);
+      const res = await apiClient.put(`${MEMBERS_BASE}/${pid}/next-of-kin`, data);
+      return {
+        ...existing,
+        nextOfKin: mapNextOfKin(res.data),
+      };
     } catch (error) {
       handleError(error, "Failed to update next of kin");
       throw error;
@@ -198,44 +172,53 @@ export const memberApi = {
   },
 
   async patchNextOfKin(
-    principalId: number,
-    data: Partial<NextOfKinDTO>
+    principalId: number | string,
+    data: Partial<NextOfKinDTO>,
+    existing: MemberDetailsDTO
   ): Promise<MemberDetailsDTO> {
+    const pid = validateId(principalId, "principal ID");
+
     try {
-      const res = await apiClient.patch(
-        `${getMembersBase()}/${principalId}/next-of-kin`,
-        data
-      );
-      return mapMemberDetails(res.data);
+      const res = await apiClient.patch(`${MEMBERS_BASE}/${pid}/next-of-kin`, data);
+      return {
+        ...existing,
+        nextOfKin: mapNextOfKin(res.data),
+      };
     } catch (error) {
       handleError(error, "Failed to patch next of kin");
       throw error;
     }
   },
 
-  async deleteNextOfKin(principalId: number): Promise<MemberDetailsDTO> {
+  async deleteNextOfKin(
+    principalId: number | string,
+    existing: MemberDetailsDTO
+  ): Promise<MemberDetailsDTO> {
+    const pid = validateId(principalId, "principal ID");
+
     try {
-      const res = await apiClient.delete(
-        `${getMembersBase()}/${principalId}/next-of-kin`
-      );
-      return mapMemberDetails(res.data);
+      await apiClient.delete(`${MEMBERS_BASE}/${pid}/next-of-kin`);
+      return { ...existing, nextOfKin: null };
     } catch (error) {
       handleError(error, "Failed to delete next of kin");
       throw error;
     }
   },
 
-  /* ------------------------------ DEPENDANTS ------------------------------ */
   async addDependant(
-    principalId: number,
-    data: Omit<DependantDTO, "id">
+    principalId: number | string,
+    data: Omit<DependantDTO, "id">,
+    existing: MemberDetailsDTO
   ): Promise<MemberDetailsDTO> {
+    const pid = validateId(principalId, "principal ID");
+
     try {
-      const res = await apiClient.post(
-        `${getMembersBase()}/${principalId}/dependants`,
-        data
-      );
-      return mapMemberDetails(res.data);
+      const res = await apiClient.post(`${MEMBERS_BASE}/${pid}/dependants`, data);
+      const dependant = mapDependant(res.data);
+      return {
+        ...existing,
+        dependants: [...existing.dependants, dependant],
+      };
     } catch (error) {
       handleError(error, "Failed to add dependant");
       throw error;
@@ -243,16 +226,22 @@ export const memberApi = {
   },
 
   async patchDependant(
-    principalId: number,
-    dependantId: number,
-    data: Partial<DependantDTO>
+    _principalId: number | string,
+    dependantId: number | string,
+    data: Partial<DependantDTO>,
+    existing: MemberDetailsDTO
   ): Promise<MemberDetailsDTO> {
+    const did = validateId(dependantId, "dependant ID");
+
     try {
-      const res = await apiClient.patch(
-        `${getMembersBase()}/${principalId}/dependants/${dependantId}`,
-        data
-      );
-      return mapMemberDetails(res.data);
+      const res = await apiClient.patch(`${MEMBERS_BASE}/dependants/${did}`, data);
+      const updated = mapDependant(res.data);
+      return {
+        ...existing,
+        dependants: existing.dependants.map((d) =>
+          d.id === updated.id ? updated : d
+        ),
+      };
     } catch (error) {
       handleError(error, "Failed to update dependant");
       throw error;
@@ -260,14 +249,19 @@ export const memberApi = {
   },
 
   async deleteDependant(
-    principalId: number,
-    dependantId: number
+    principalId: number | string,
+    dependantId: number | string,
+    existing: MemberDetailsDTO
   ): Promise<MemberDetailsDTO> {
+    const pid = validateId(principalId, "principal ID");
+    const did = validateId(dependantId, "dependant ID");
+
     try {
-      const res = await apiClient.delete(
-        `${getMembersBase()}/${principalId}/dependants/${dependantId}`
-      );
-      return mapMemberDetails(res.data);
+      await apiClient.delete(`${MEMBERS_BASE}/${pid}/dependants/${did}`);
+      return {
+        ...existing,
+        dependants: existing.dependants.filter((d) => d.id !== did),
+      };
     } catch (error) {
       handleError(error, "Failed to delete dependant");
       throw error;

@@ -305,11 +305,11 @@ export default function DependantsForm({
                 <TextInput
                   label="First Name"
                   value={dependant.firstName || ""}
-                  onChange={(value) =>
+                  onChange={(e) =>
                     updateDependant(
                       dependant.id,
                       "firstName",
-                      value
+                      e.target.value
                     )
                   }
                   placeholder="Enter first name"
@@ -319,11 +319,11 @@ export default function DependantsForm({
                 <TextInput
                   label="Last Name"
                   value={dependant.lastName || ""}
-                  onChange={(value) =>
+                  onChange={(e) =>
                     updateDependant(
                       dependant.id,
                       "lastName",
-                      value
+                      e.target.value
                     )
                   }
                   placeholder="Enter last name"
@@ -364,11 +364,11 @@ export default function DependantsForm({
                   label="Phone Number"
                   type="tel"
                   value={dependant.phoneNumber || ""}
-                  onChange={(value) =>
+                  onChange={(e) =>
                     updateDependant(
                       dependant.id,
                       "phoneNumber",
-                      value
+                      e.target.value
                     )
                   }
                   placeholder="07XXXXXXXX"
@@ -390,12 +390,16 @@ export default function DependantsForm({
                 <div className="md:col-span-2">
                   <TextInput
                     label="Birth Certificate Path"
-                    value={dependant.birthCertificatePath || ""}
-                    onChange={(value) =>
+                    value={
+                      typeof dependant.birthCertificatePath === "string"
+                        ? dependant.birthCertificatePath
+                        : ""
+                    }
+                    onChange={(e) =>
                       updateDependant(
                         dependant.id,
                         "birthCertificatePath",
-                        value
+                        e.target.value
                       )
                     }
                     placeholder="uploads/birth-certificates/file.png"

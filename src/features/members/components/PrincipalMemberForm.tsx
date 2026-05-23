@@ -34,7 +34,7 @@ export default function PrincipalMemberForm({ principal, onChange, errors }: Pro
         <TextInput
           label="First Name"
           value={principal.firstName}
-          onChange={(value) => onChange({ ...principal, firstName: value })}
+          onChange={(e) => onChange({ ...principal, firstName: e.target.value })}
           placeholder="Enter first name"
           error={errors.principalFirstName}
         />
@@ -42,7 +42,7 @@ export default function PrincipalMemberForm({ principal, onChange, errors }: Pro
         <TextInput
           label="Last Name"
           value={principal.lastName}
-          onChange={(value) => onChange({ ...principal, lastName: value })}
+          onChange={(e) => onChange({ ...principal, lastName: e.target.value })}
           placeholder="Enter last name"
           error={errors.principalLastName}
         />
@@ -50,8 +50,8 @@ export default function PrincipalMemberForm({ principal, onChange, errors }: Pro
         <TextInput
           label="National ID"
           value={principal.nationalID}
-          onChange={(value) => onChange({ ...principal, nationalID: value })}
-          placeholder="Enter national ID number"
+          onChange={(e) => onChange({ ...principal, nationalID: e.target.value })}
+          placeholder="Enter national ID (6–10 digits)"
           error={errors.principalNationalID}
         />
 
@@ -74,7 +74,7 @@ export default function PrincipalMemberForm({ principal, onChange, errors }: Pro
           label="Phone Number"
           type="tel"
           value={principal.phoneNumber}
-          onChange={(value) => onChange({ ...principal, phoneNumber: value })}
+          onChange={(e) => onChange({ ...principal, phoneNumber: e.target.value })}
           placeholder="07XXXXXXXX"
           error={errors.principalPhoneNumber}
         />
@@ -88,8 +88,8 @@ export default function PrincipalMemberForm({ principal, onChange, errors }: Pro
 
         <TextInput
           label="Group Name"
-          value={principal.groupName}
-          onChange={(value) => onChange({ ...principal, groupName: value })}
+          value={principal.groupName ?? ""}
+          onChange={(e) => onChange({ ...principal, groupName: e.target.value })}
           placeholder="Enter group name"
           error={errors.principalGroupName}
         />

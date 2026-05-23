@@ -18,8 +18,20 @@ import {
   MemberDetailsPage,
   MemberRegistrationPage,
 } from "@/components/routes/MemberRoutes";
+import { Dashboard } from "@/features/dashboard";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { MEMBER_ROLES, REGISTRATION_ROLES } from "@/utils/routes";
+import { PERMISSIONS } from "@/types/permissions";
+
+function MemberDashboardPage() {
+  const navigate = useNavigate();
+  return (
+    <Dashboard
+      onNavigateToRegistration={() => navigate("/register")}
+      onNavigateToMembers={() => navigate("/members")}
+    />
+  );
+}
 
 function CatchAllRedirect() {
   const { isAuthenticated, user, loading } = useAuth();
@@ -76,9 +88,18 @@ export default function App() {
           <Route index element={<RoleHomeRedirect />} />
 
           <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute requiredPermissions={[PERMISSIONS.MEMBER_READ]}>
+                <MemberDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/members"
             element={
-              <ProtectedRoute allowedRoles={MEMBER_ROLES}>
+              <ProtectedRoute requiredPermissions={[PERMISSIONS.MEMBER_READ]}>
                 <MemberListPage />
               </ProtectedRoute>
             }
@@ -87,7 +108,7 @@ export default function App() {
           <Route
             path="/members/:id"
             element={
-              <ProtectedRoute allowedRoles={MEMBER_ROLES}>
+              <ProtectedRoute requiredPermissions={[PERMISSIONS.MEMBER_READ]}>
                 <MemberDetailsPage />
               </ProtectedRoute>
             }
@@ -96,7 +117,7 @@ export default function App() {
           <Route
             path="/register"
             element={
-              <ProtectedRoute allowedRoles={REGISTRATION_ROLES}>
+              <ProtectedRoute requiredPermissions={[PERMISSIONS.MEMBER_CREATE]}>
                 <MemberRegistrationPage />
               </ProtectedRoute>
             }

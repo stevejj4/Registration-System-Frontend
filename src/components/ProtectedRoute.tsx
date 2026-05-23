@@ -8,13 +8,25 @@ import type { UserRole } from "@/types/enums";
 interface Props {
   children: React.ReactElement;
   allowedRoles?: UserRole[] | string[];
+  requiredPermissions?: string[];
 }
 
-const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
-  const { isAuthenticated, user } = useAuth();
+const ProtectedRoute: React.FC<Props> = ({
+  children,
+  allowedRoles,
+  requiredPermissions,
+}) => {
+  const { isAuthenticated, user, hasPermission } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (requiredPermissions && requiredPermissions.length > 0) {
+    const allowed = requiredPermissions.some((p) => hasPermission(p));
+    if (!allowed) {
+      return <Navigate to={getRoleHomePath(user?.role)} replace />;
+    }
   }
 
   if (allowedRoles && allowedRoles.length > 0) {

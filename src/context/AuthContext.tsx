@@ -14,8 +14,10 @@ import type {
 } from "@/types/auth";
 
 import { login as apiLogin } from "@/api/authApi";
+import { navigationApi } from "@/api/navigationApi";
 import { setAuthToken } from "@/api/client";
 import { normalizeRole } from "@/utils/auth";
+import type { NavigationItemDTO } from "@/types/navigation";
 
 /* -------------------------------------------------------------------------- */
 /*                                 CONTEXT                                    */
@@ -24,12 +26,16 @@ import { normalizeRole } from "@/utils/auth";
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
+  navigation: NavigationItemDTO[];
+  navigationLoading: boolean;
 
   login: (payload: LoginRequestDTO) => Promise<AuthUser>;
   logout: () => void;
+  refreshNavigation: () => Promise<void>;
 
   isAuthenticated: boolean;
   hasRole: (role: UserRole) => boolean;
+  hasPermission: (permission: string) => boolean;
 
   loading: boolean;
 }
@@ -49,30 +55,54 @@ export const AuthProvider: React.FC<{
 
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [navigation, setNavigation] = useState<NavigationItemDTO[]>([]);
+  const [navigationLoading, setNavigationLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const loadNavigation = useCallback(async () => {
+    setNavigationLoading(true);
+    try {
+      const items = await navigationApi.getNavigation();
+      setNavigation(items);
+    } catch (err) {
+      console.error("Navigation load failed:", err);
+      setNavigation([]);
+    } finally {
+      setNavigationLoading(false);
+    }
+  }, []);
 
   /* --------------------- HYDRATE AUTH ON START -------------------------- */
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem("auth_user");
-      const storedToken = localStorage.getItem("auth_token");
+    const hydrate = async () => {
+      try {
+        const storedUser = localStorage.getItem("auth_user");
+        const storedToken = localStorage.getItem("auth_token");
 
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser) as AuthUser;
+          setUser({
+            ...parsed,
+            permissions: parsed.permissions ?? [],
+          });
+        }
 
-      if (storedToken) {
-        setToken(storedToken);
-        setAuthToken(storedToken);
+        if (storedToken) {
+          setToken(storedToken);
+          setAuthToken(storedToken);
+          await loadNavigation();
+        }
+      } catch (err) {
+        console.error("Auth hydration failed:", err);
+        localStorage.removeItem("auth_user");
+        localStorage.removeItem("auth_token");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Auth hydration failed:", err);
-      localStorage.removeItem("auth_user");
-      localStorage.removeItem("auth_token");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    };
+
+    void hydrate();
+  }, [loadNavigation]);
 
   /* ------------------------ TOKEN SYNC ----------------------------------- */
   useEffect(() => {
@@ -108,17 +138,20 @@ export const AuthProvider: React.FC<{
       email: res.email,
       fullName: res.fullName,
       role: normalizedRole,
+      permissions: res.permissions ?? [],
     };
 
     setUser(resolvedUser);
     setToken(res.token);
+    await loadNavigation();
     return resolvedUser;
-  }, []);
+  }, [loadNavigation]);
 
   /* ---------------------------- LOGOUT ----------------------------------- */
   const logout = useCallback(() => {
     setUser(null);
     setToken(null);
+    setNavigation([]);
 
     localStorage.removeItem("auth_user");
     localStorage.removeItem("auth_token");
@@ -141,18 +174,47 @@ export const AuthProvider: React.FC<{
     [user]
   );
 
+  const hasPermission = useCallback(
+    (permission: string) => {
+      return user?.permissions?.includes(permission) ?? false;
+    },
+    [user]
+  );
+
+  const refreshNavigation = useCallback(async () => {
+    if (token) {
+      await loadNavigation();
+    }
+  }, [token, loadNavigation]);
+
   /* ---------------------------- CONTEXT ---------------------------------- */
   const value = useMemo(
     () => ({
       user,
       token,
+      navigation,
+      navigationLoading,
       login,
       logout,
+      refreshNavigation,
       isAuthenticated,
       hasRole,
+      hasPermission,
       loading,
     }),
-    [user, token, login, logout, isAuthenticated, hasRole, loading]
+    [
+      user,
+      token,
+      navigation,
+      navigationLoading,
+      login,
+      logout,
+      refreshNavigation,
+      isAuthenticated,
+      hasRole,
+      hasPermission,
+      loading,
+    ]
   );
 
   return (

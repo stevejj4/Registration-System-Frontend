@@ -26,6 +26,8 @@ export interface AuthResponseDTO {
   email: string;
 
   fullName: string;
+
+  permissions?: string[];
 }
 
 /**
@@ -40,6 +42,8 @@ export interface AuthUser {
   fullName: string;
 
   role: UserRole;
+
+  permissions: string[];
 
   token?: string;
 }
