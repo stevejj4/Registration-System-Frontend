@@ -148,6 +148,12 @@ export function mapPrincipalMember(
     groupName: safeString(api?.groupName),
 
     dateOfBirth: safeString(api?.dateOfBirth),
+
+    registrationDate: safeString(api?.registrationDate),
+
+    registeredByName: safeOptionalString(api?.registeredByName),
+
+    registeredByRole: safeOptionalString(api?.registeredByRole),
   };
 }
 
@@ -308,7 +314,12 @@ export function mapMemberListItem(
    * or flat object
    */
   const memberData =
-    api?.member || api;
+    api?.member || api?.principal || api;
+
+  const registrationRaw =
+    memberData?.registrationDate ??
+    api?.registrationDate ??
+    memberData?.createdAt;
 
   return {
     id:
@@ -340,10 +351,14 @@ export function mapMemberListItem(
       memberData?.groupName
     ),
 
-    registrationDate:
-      safeString(
-        memberData?.registrationDate ||
-          memberData?.createdAt
-      ),
+    registrationDate: safeString(registrationRaw),
+
+    registeredByName: safeString(
+      memberData?.registeredByName ?? api?.registeredByName
+    ),
+
+    registeredByRole: safeString(
+      memberData?.registeredByRole ?? api?.registeredByRole
+    ),
   };
 }

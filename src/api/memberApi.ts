@@ -52,6 +52,16 @@ export const memberApi = {
     }
   },
 
+  async getAllDetails(): Promise<MemberDetailsDTO[]> {
+    try {
+      const res = await apiClient.get(MEMBERS_BASE);
+      return (res.data ?? []).map(mapMemberDetails);
+    } catch (error) {
+      handleError(error, "Failed to fetch member details");
+      throw error;
+    }
+  },
+
   async getById(id: number | string): Promise<MemberDetailsDTO> {
     const memberId = validateId(id, "member ID");
 

@@ -30,7 +30,7 @@ export default function AdminDashboard() {
       description: 'Generate and view system reports, analytics, and audit logs.',
       icon: '📊',
       color: 'bg-purple-50 border-purple-200 hover:bg-purple-100',
-      onClick: () => alert('Reports feature coming soon'),
+      onClick: () => navigate('/members'),
     },
     {
       id: 'settings',

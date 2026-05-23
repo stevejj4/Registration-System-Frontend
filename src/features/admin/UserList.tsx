@@ -3,6 +3,7 @@ import {
   getUsers,
   deleteUser,
   createUser,
+  updateUser,
   resetUserPassword,
   updateUserRole,
   SystemUser,
@@ -10,11 +11,15 @@ import {
 import { Button } from "@/components/ui/Button";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import CreateUserModal from "@/features/admin/CreateUserModal";
+import EditUserModal from "@/features/admin/EditUserModal";
 import ResetPasswordModal from "@/features/admin/ResetPasswordModal";
+import { UpdateUserRequestDTO } from "@/types/auth";
 import { UserRole } from "@/types/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { isCurrentUserAccount } from "@/utils/userAccount";
 import { Search } from "lucide-react";
+import { usePagination } from "@/hooks/usePagination";
+import Pagination from "@/components/ui/Pagination";
 
 const PAGE_SIZE = 8;
 const ASSIGNABLE_ROLES: UserRole[] = ["FACILITATOR", "COORDINATOR"];
@@ -25,9 +30,9 @@ export default function UserList() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(0);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<SystemUser | null>(null);
   const [resetTarget, setResetTarget] = useState<SystemUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SystemUser | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -59,16 +64,15 @@ export default function UserList() {
     );
   }, [users, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
-
-  useEffect(() => {
-    setPage((p) => Math.min(p, totalPages - 1));
-  }, [totalPages]);
-
-  const paginatedUsers = useMemo(() => {
-    const start = page * PAGE_SIZE;
-    return filteredUsers.slice(start, start + PAGE_SIZE);
-  }, [filteredUsers, page]);
+  const {
+    page,
+    setPage,
+    paginatedItems: paginatedUsers,
+    totalItems,
+    totalPages,
+    rangeStart,
+    rangeEnd,
+  } = usePagination(filteredUsers, PAGE_SIZE, [search]);
 
   const existingEmails = useMemo(
     () => users.map((u) => u.email),
@@ -105,6 +109,18 @@ export default function UserList() {
       setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleEdit = async (id: string, data: UpdateUserRequestDTO) => {
+    setError(null);
+    try {
+      const updated = await updateUser(id, data);
+      setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Update failed";
+      setError(message);
+      throw err;
     }
   };
 
@@ -238,6 +254,13 @@ export default function UserList() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => setEditTarget(u)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           disabled={isSelf}
                           title={
                             isSelf
@@ -271,43 +294,28 @@ export default function UserList() {
         </table>
       </div>
 
-      <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
-        <span>
-          Showing{" "}
-          {filteredUsers.length === 0
-            ? 0
-            : page * PAGE_SIZE + 1}
-          –
-          {Math.min((page + 1) * PAGE_SIZE, filteredUsers.length)} of{" "}
-          {filteredUsers.length}
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 0}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            Previous
-          </Button>
-          <span className="px-2 py-1">
-            Page {page + 1} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages - 1}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        rangeStart={rangeStart}
+        rangeEnd={rangeEnd}
+        onPageChange={setPage}
+        className="mt-4 rounded-md border border-gray-200 bg-white"
+      />
 
       <CreateUserModal
         isOpen={createOpen}
         onClose={() => setCreateOpen(false)}
         onSubmit={handleCreate}
+        existingEmails={existingEmails}
+      />
+
+      <EditUserModal
+        isOpen={!!editTarget}
+        user={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSubmit={handleEdit}
         existingEmails={existingEmails}
       />
 

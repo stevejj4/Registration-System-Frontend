@@ -3,6 +3,11 @@ import { useDashboard } from '../hooks/useDashboard';
 import { Users, UserPlus, TrendingUp, Calendar, Activity, RefreshCw } from 'lucide-react';
 import { Loading } from '@/components/feedback/Loading';
 import { Error } from '@/components/feedback/Error';
+import { formatTimeAgo } from '@/utils/dateUtils';
+import { usePagination } from '@/hooks/usePagination';
+import Pagination from '@/components/ui/Pagination';
+
+const ACTIVITY_PAGE_SIZE = 5;
 
 interface DashboardProps {
   onNavigateToRegistration?: () => void;
@@ -15,20 +20,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const { stats, recentActivity, loading, error, refresh } = useDashboard();
 
+  const {
+    page: activityPage,
+    setPage: setActivityPage,
+    paginatedItems: paginatedActivity,
+    totalItems: activityTotal,
+    totalPages: activityTotalPages,
+    rangeStart: activityRangeStart,
+    rangeEnd: activityRangeEnd,
+  } = usePagination(recentActivity, ACTIVITY_PAGE_SIZE);
+
   if (loading) return <Loading />;
   if (error) return <Error message={error} onRetry={refresh} />;
-
-  const formatTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const past = new Date(timestamp);
-    const diffInHours = Math.floor((now.getTime() - past.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-  };
 
   return (
     <div className="max-w-7xl mx-auto p-8">
@@ -105,8 +108,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <Calendar className="h-5 w-5 text-gray-400" />
           </div>
           <div className="space-y-4">
-            {recentActivity.length > 0 ? (
-              recentActivity.map((activity) => (
+            {activityTotal > 0 ? (
+              paginatedActivity.map((activity) => (
                 <div key={activity.id} className="flex items-center space-x-3">
                   <div className="shrink-0">
                     <div className={`h-2 w-2 rounded-full ${
@@ -124,6 +127,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <p className="text-gray-500 text-sm">No recent activity</p>
             )}
           </div>
+          {activityTotal > 0 && (
+            <Pagination
+              page={activityPage}
+              totalPages={activityTotalPages}
+              totalItems={activityTotal}
+              rangeStart={activityRangeStart}
+              rangeEnd={activityRangeEnd}
+              onPageChange={setActivityPage}
+              className="mt-4 rounded-md border border-gray-200 !bg-white"
+            />
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

@@ -63,6 +63,12 @@ export interface CreateUserResponseDTO {
   message: string;
 }
 
+export interface UpdateUserRequestDTO {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
 /** @deprecated Use CreateUserRequestDTO */
 export interface RegisterUserDTO {
   email: string;
@@ -82,6 +88,8 @@ export interface UserDTO {
   fullName: string;
 
   role: UserRole;
+
+  createdAt?: string;
 }
 
 /**

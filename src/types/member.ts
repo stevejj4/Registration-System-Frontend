@@ -24,6 +24,12 @@ export interface PrincipalMemberDTO {
   groupName?: string;
 
   dateOfBirth: string; // yyyy-MM-dd
+
+  registrationDate?: string;
+
+  registeredByName?: string;
+
+  registeredByRole?: string;
 }
 
 /**
@@ -116,6 +122,10 @@ export interface MemberListItemDTO {
   groupName?: string;
 
   registrationDate: string;
+
+  registeredByName?: string;
+
+  registeredByRole?: string;
 }
 
 /* -------------------------------------------------------------------------- */

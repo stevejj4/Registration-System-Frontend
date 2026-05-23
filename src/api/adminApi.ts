@@ -1,6 +1,6 @@
 import { apiClient, handleError } from './client';
 import { normalizeRole } from '@/utils/auth';
-import type { CreateUserRequestDTO } from '@/types/auth';
+import type { CreateUserRequestDTO, UpdateUserRequestDTO } from '@/types/auth';
 import type { UserRole } from '@/types/enums';
 
 export interface SystemUser {
@@ -8,6 +8,7 @@ export interface SystemUser {
   fullName: string;
   email: string;
   role: UserRole;
+  createdAt?: string;
 }
 
 function mapSystemUser(raw: Record<string, unknown>): SystemUser {
@@ -17,6 +18,7 @@ function mapSystemUser(raw: Record<string, unknown>): SystemUser {
     fullName: String(raw.fullName ?? ''),
     email: String(raw.email ?? ''),
     role: normalized ?? 'FACILITATOR',
+    createdAt: raw.createdAt != null ? String(raw.createdAt) : undefined,
   };
 }
 
@@ -79,6 +81,20 @@ export const resetUserPassword = async (
     });
   } catch (error) {
     handleError(error, 'Failed to reset user password');
+    throw error;
+  }
+};
+
+export const updateUser = async (
+  userId: string,
+  data: UpdateUserRequestDTO
+): Promise<SystemUser> => {
+  if (!userId) throw new Error('User ID is required');
+  try {
+    const res = await apiClient.patch(`${ADMIN_USERS_BASE}/${userId}`, data);
+    return mapSystemUser(res.data as Record<string, unknown>);
+  } catch (error) {
+    handleError(error, 'Failed to update user');
     throw error;
   }
 };

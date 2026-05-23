@@ -10,7 +10,7 @@ interface Props {
   principal: PrincipalMember;
   onChange: (principal: PrincipalMember) => void;
   errors: {
-    principalFirstName: string | null;
+    principalFirstName: string | null; // 
     principalLastName: string | null;
     principalNationalID: string | null;
     principalGender: string | null;
