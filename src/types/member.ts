@@ -17,7 +17,7 @@ export interface PrincipalMemberDTO {
 
   nationalID: string;
 
-  gender: GenderType;
+  gender: GenderType; // allow values defined in the enum
 
   phoneNumber: string;
 

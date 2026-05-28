@@ -2,11 +2,12 @@
 
 /**
  * Generic API Response Wrapper
+ * Standardizes ALL backend responses
  */
 export interface ApiResponse<T> {
   success: boolean;
 
-  data?: T;
+  data?: T; // some type that will be provided later when we use this interface
 
   error?: string;
 
@@ -15,6 +16,7 @@ export interface ApiResponse<T> {
 
 /**
  * API Error Response
+ * models backend failure structure
  */
 export interface ApiErrorResponse {
   timestamp?: string;

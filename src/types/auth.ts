@@ -31,7 +31,7 @@ export interface AuthResponseDTO {
 }
 
 /**
- * Authenticated User
+ * Authenticated User -- currently logged in user
  * Stored in frontend state/context
  */
 export interface AuthUser {
@@ -100,7 +100,7 @@ export interface ForgotPasswordRequestDTO {
 }
 
 /**
- * Reset Password Request (6-digit OTP)
+ * Reset Password Request (6-digit OTP to email)
  */
 export interface ResetPasswordRequestDTO {
   email: string;
