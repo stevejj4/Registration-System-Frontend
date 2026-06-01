@@ -1,5 +1,26 @@
 // src/utils/memberUtils.ts
 
+/**
+ * Member Utility Functions
+ *
+ * Centralized helper functions used throughout the Member
+ * Registration application.
+ *
+ * Responsibilities:
+ * - Formatting dates and phone numbers
+ * - Member-related validations
+ * - Age calculations
+ * - Member display helpers
+ * - Sorting and filtering member records
+ * - Enum-to-display text conversions
+ *
+ * Keeping this logic here helps:
+ * - Reduce duplication
+ * - Improve maintainability
+ * - Keep React components focused on UI rendering
+ * - Ensure consistent business rules across the application
+ */
+
 import type { MemberListItemDTO } from "@/types/member";
 import type { GenderType, RelationshipType } from "@/types/enums";
 
@@ -7,6 +28,19 @@ import type { GenderType, RelationshipType } from "@/types/enums";
 /*                                DATE FORMAT                                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Formats a date string into a user-friendly display format.
+ *
+ * Example:
+ * 2026-06-01 → June 1, 2026
+ *
+ * Returns "N/A" when no date is provided.
+ * Returns the original value when the date is invalid.
+ * Us Date
+ *
+ * @param dateString date value from API or form
+ * @returns formatted date string
+ */
 export const formatDate = (dateString?: string): string => {
   if (!dateString) return "N/A";
 
@@ -26,6 +60,19 @@ export const formatDate = (dateString?: string): string => {
 /* -------------------------------------------------------------------------- */
 /*                              PHONE FORMATTING                              */
 /* -------------------------------------------------------------------------- */
+/**
+ * Formats a Kenyan phone number for display.
+ *
+ * Example:
+ * 0712345678 → 0712 345 678
+ *
+ * If the phone number does not match the
+ * expected Kenyan format, the original
+ * value is returned.
+ *
+ * @param phone phone number to format
+ * @returns formatted phone number
+ */
 
 export const formatPhoneNumber = (
   phone?: string
@@ -47,6 +94,17 @@ export const formatPhoneNumber = (
 /*                                VALIDATIONS                                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Validates a Kenyan National ID number.
+ *
+ * Rules:
+ * - Must contain digits only
+ * - Must be between 7 and 10 digits
+ *
+ * @param id national ID number
+ * @returns true when valid
+ */
+
 export const validateNationalId = (
   id?: string
 ): boolean => {
@@ -56,6 +114,15 @@ export const validateNationalId = (
   return /^\d{7,10}$/.test(id);
 };
 
+/**
+ * Validates a Kenyan mobile phone number.
+ *
+ * Expected format:
+ * 07XXXXXXXX
+ *
+ * @param phone phone number to validate
+ * @returns true when valid
+ */
 export const validatePhoneNumber = (
   phone?: string
 ): boolean => {
