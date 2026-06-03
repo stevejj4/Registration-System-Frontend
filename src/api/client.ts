@@ -2,6 +2,14 @@ import axios, { AxiosError } from 'axios'; // our HTTP client library
 import type { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 
 /**
+ * this file - creates Axios
+ * stores JWT token
+ * Attaches token to requests
+ * Handeles unauthorized users
+ * Handles API errors globally
+ * Provides a connectivity check function
+ */
+/**
  * Axios instance acts as the single source of HTTP configuration
  * consistent base URL
  * Easier to swap environments (dev, staging, prod) by changing one place
