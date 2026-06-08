@@ -38,6 +38,15 @@ export const getUsers = async (): Promise<SystemUser[]> => {
     throw error;
   }
 };
+/**
+ * Sends new user information to backend to create user.
+ * Backend generates random password and emails credentials to new user.
+ * Returns the created user and success message from backend.
+ * Throws error if creation fails.
+ * @param data - user information for creating new user
+ * @returns created user and success message
+ * @throws Error if API call fails or response is invalid
+ */
 
 export interface CreateUserResult {
   user: SystemUser;
