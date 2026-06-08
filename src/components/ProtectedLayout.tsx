@@ -46,7 +46,7 @@ const ProtectedLayout: React.FC = () => {
             <button
               type="button"
               onClick={() => setSidebarOpen((open) => !open)}
-              className="inline-flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-md text-gray-700 transition-colors hover:bg-gray-100 md:hidden"
+              className="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-md text-gray-700 transition-colors hover:bg-gray-100 md:hidden"
               aria-label={sidebarOpen ? "Close menu" : "Open menu"}
               aria-expanded={sidebarOpen}
             >

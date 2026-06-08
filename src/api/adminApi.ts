@@ -11,6 +11,10 @@ export interface SystemUser {
   createdAt?: string;
 }
 
+/**
+ * convert backend JSON into a clean frontend object
+ * handles missing fields and normalizes role string to UserRole enum
+ */
 function mapSystemUser(raw: Record<string, unknown>): SystemUser {
   const normalized = normalizeRole(String(raw.role ?? ''));
   return {
@@ -22,7 +26,7 @@ function mapSystemUser(raw: Record<string, unknown>): SystemUser {
   };
 }
 
-const ADMIN_USERS_BASE = '/v1/admin/users';
+const ADMIN_USERS_BASE = '/v1/admin/users'; // to avoid repeating the base path for all user-related admin API calls
 
 export const getUsers = async (): Promise<SystemUser[]> => {
   try {

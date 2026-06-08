@@ -14,7 +14,7 @@ import type { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
  * consistent base URL
  * Easier to swap environments (dev, staging, prod) by changing one place
  */
-export const apiClient = axios.create({ 
+export const apiClient = axios.create({
   baseURL: "http://localhost:9090/api", // default base URL for all API requests,
   headers: { 
     "Content-Type": "application/json", // 
@@ -22,7 +22,7 @@ export const apiClient = axios.create({
 });
 
 // Token storage key used by auth provider
-const TOKEN_KEY = 'auth_token';
+const TOKEN_KEY = 'auth_token'; // the key under which the JWT token will be stored in localStorage, this allows us to persist the user's authentication state across page reloads and browser sessions, and also allows our Axios interceptor to retrieve the token and include it in the Authorization header of future API requests automatically
 
 /**
  * Helper to set/remove token in localStorage and keep axios interceptor working

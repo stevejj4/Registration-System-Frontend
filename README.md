@@ -94,7 +94,7 @@ Before running this project, ensure you have:
 After starting the application:
 
 - Open: <kbd>http://localhost:5173</kbd>
-- Login using valid credentials from backend
+- Login using valid credentials created by admin
 - Access dashboards based on assigned role
 
 Example API usage (handled internally via service layer):
