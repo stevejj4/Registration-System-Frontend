@@ -13,11 +13,17 @@ import type {
   UserRole,
 } from "@/types/auth";
 
-import { login as apiLogin } from "@/api/authApi";
+import { login as apiLogin, logout as apiLogout } from "@/api/authApi";
 import { navigationApi } from "@/api/navigationApi";
-import { setAuthToken } from "@/api/client";
+import {
+  setAccessToken,
+  registerAuthLifecycleHandlers,
+  refreshAccessToken,
+} from "@/api/client";
 import { normalizeRole } from "@/utils/auth";
 import type { NavigationItemDTO } from "@/types/navigation";
+
+const AUTH_USER_KEY = "auth_user";
 
 /* -------------------------------------------------------------------------- */
 /*                                 CONTEXT                                    */
@@ -30,7 +36,7 @@ interface AuthContextType {
   navigationLoading: boolean;
 
   login: (payload: LoginRequestDTO) => Promise<AuthUser>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshNavigation: () => Promise<void>;
 
   isAuthenticated: boolean;
@@ -50,14 +56,19 @@ export const AuthContext =
 export const AuthProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-
-  /* -------------------------- STATE -------------------------------------- */
-
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [navigation, setNavigation] = useState<NavigationItemDTO[]>([]);
   const [navigationLoading, setNavigationLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const clearLocalSession = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    setNavigation([]);
+    localStorage.removeItem(AUTH_USER_KEY);
+    setAccessToken(null);
+  }, []);
 
   const loadNavigation = useCallback(async () => {
     setNavigationLoading(true);
@@ -72,97 +83,100 @@ export const AuthProvider: React.FC<{
     }
   }, []);
 
-  /* --------------------- HYDRATE AUTH ON START -------------------------- */
+  useEffect(() => {
+    registerAuthLifecycleHandlers({
+      onTokenRefreshed: (newToken) => {
+        setToken(newToken);
+      },
+      onSessionExpired: () => {
+        clearLocalSession();
+        window.location.replace("/login");
+      },
+    });
+  }, [clearLocalSession]);
+
+  useEffect(() => {
+    setAccessToken(token);
+  }, [token]);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(AUTH_USER_KEY);
+    }
+  }, [user]);
+
   useEffect(() => {
     const hydrate = async () => {
       try {
-        const storedUser = localStorage.getItem("auth_user");
-        const storedToken = localStorage.getItem("auth_token");
+        const storedUser = localStorage.getItem(AUTH_USER_KEY);
 
-        if (storedUser) {
-          const parsed = JSON.parse(storedUser) as AuthUser;
-          setUser({
-            ...parsed,
-            permissions: parsed.permissions ?? [],
-          });
+        if (!storedUser) {
+          return;
         }
 
-        if (storedToken) {
-          setToken(storedToken);
-          setAuthToken(storedToken);
+        const parsed = JSON.parse(storedUser) as AuthUser;
+        setUser({
+          ...parsed,
+          permissions: parsed.permissions ?? [],
+        });
+
+        try {
+          const refreshedToken = await refreshAccessToken();
+          setToken(refreshedToken);
           await loadNavigation();
+        } catch {
+          clearLocalSession();
         }
       } catch (err) {
         console.error("Auth hydration failed:", err);
-        localStorage.removeItem("auth_user");
-        localStorage.removeItem("auth_token");
+        clearLocalSession();
       } finally {
         setLoading(false);
       }
     };
 
     void hydrate();
-  }, [loadNavigation]);
+  }, [clearLocalSession, loadNavigation]);
 
-  /* ------------------------ TOKEN SYNC ----------------------------------- */
-  useEffect(() => {
-    if (token) {
-      localStorage.setItem("auth_token", token);
-      setAuthToken(token);
-    } else {
-      localStorage.removeItem("auth_token");
-      setAuthToken(undefined);
+  const login = useCallback(
+    async (payload: LoginRequestDTO): Promise<AuthUser> => {
+      const res: AuthResponseDTO = await apiLogin(payload);
+
+      const normalizedRole = normalizeRole(res.role);
+
+      if (!normalizedRole) {
+        throw new Error("Invalid role from server");
+      }
+
+      const resolvedUser: AuthUser = {
+        id: res.id,
+        email: res.email,
+        fullName: res.fullName,
+        role: normalizedRole,
+        permissions: res.permissions ?? [],
+      };
+
+      setUser(resolvedUser);
+      setToken(res.token);
+      await loadNavigation();
+      return resolvedUser;
+    },
+    [loadNavigation]
+  );
+
+  const logout = useCallback(async () => {
+    try {
+      await apiLogout();
+    } catch (err) {
+      console.error("Logout request failed:", err);
+    } finally {
+      clearLocalSession();
+      window.location.replace("/login");
     }
-  }, [token]);
+  }, [clearLocalSession]);
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem("auth_user", JSON.stringify(user));
-    } else {
-      localStorage.removeItem("auth_user");
-    }
-  }, [user]);
-
-  /* ---------------------------- LOGIN ------------------------------------ */
-  const login = useCallback(async (payload: LoginRequestDTO): Promise<AuthUser> => {
-    const res: AuthResponseDTO = await apiLogin(payload);
-
-    const normalizedRole = normalizeRole(res.role);
-
-    if (!normalizedRole) {
-      throw new Error("Invalid role from server");
-    }
-
-    const resolvedUser: AuthUser = {
-      id: res.id,
-      email: res.email,
-      fullName: res.fullName,
-      role: normalizedRole,
-      permissions: res.permissions ?? [],
-    };
-
-    setUser(resolvedUser);
-    setToken(res.token);
-    await loadNavigation();
-    return resolvedUser;
-  }, [loadNavigation]);
-
-  /* ---------------------------- LOGOUT ----------------------------------- */
-  const logout = useCallback(() => {
-    setUser(null);
-    setToken(null);
-    setNavigation([]);
-
-    localStorage.removeItem("auth_user");
-    localStorage.removeItem("auth_token");
-
-    setAuthToken(undefined);
-
-    // SPA-safe redirect
-    window.location.replace("/login");
-  }, []);
-
-  /* ------------------------- DERIVED STATE ------------------------------ */
   const isAuthenticated = useMemo(() => {
     return !!token && !!user;
   }, [token, user]);
@@ -187,7 +201,6 @@ export const AuthProvider: React.FC<{
     }
   }, [token, loadNavigation]);
 
-  /* ---------------------------- CONTEXT ---------------------------------- */
   const value = useMemo(
     () => ({
       user,

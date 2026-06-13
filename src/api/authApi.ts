@@ -1,6 +1,4 @@
-// src/services/authApi.ts
-
-import { apiClient, setAuthToken } from "./client";
+import { apiClient } from "./client";
 
 import type {
   AuthResponseDTO,
@@ -16,29 +14,15 @@ import type {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Authenticate user
+ * Authenticate user. HttpOnly cookies are set by the server; the ephemeral
+ * access token in the response body is held in-memory by AuthContext only.
  */
 export const login = async (
   payload: LoginRequestDTO
 ): Promise<AuthResponseDTO> => {
-  const response = await apiClient.post(
-    "/auth/login",
-    payload
-  );
-
-  const data =
-    response.data as AuthResponseDTO;
-
-  /**
-   * Persist JWT token
-   */
-  if (data?.token) {
-    setAuthToken(data.token);
-  }
-
-  return data; // Return the entire response data, which includes both the token and user information, to allow components to access all relevant authentication details without needing to make an additional API call to fetch the user profile.
+  const response = await apiClient.post("/auth/login", payload);
+  return response.data as AuthResponseDTO;
 };
-
 
 /* -------------------------------------------------------------------------- */
 /*                              FORGOT PASSWORD                               */
@@ -54,7 +38,10 @@ export const forgotPassword = async (
     "/v1/auth/forgot-password",
     payload
   );
-  return res.data?.message ?? "If an account exists for that email, a verification code has been sent.";
+  return (
+    res.data?.message ??
+    "If an account exists for that email, a verification code has been sent."
+  );
 };
 
 /* -------------------------------------------------------------------------- */
@@ -81,27 +68,18 @@ export const resetPassword = async (
 /**
  * Get authenticated user profile
  */
-export const getCurrentUser =
-  async (): Promise<UserDTO> => {
-    const response =
-      await apiClient.get(
-        "/auth/me"
-      );
-
-    return response.data as UserDTO;
-  };
+export const getCurrentUser = async (): Promise<UserDTO> => {
+  const response = await apiClient.get("/auth/me");
+  return response.data as UserDTO;
+};
 
 /* -------------------------------------------------------------------------- */
 /*                                   LOGOUT                                   */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Logout user
+ * Invalidate the server session and clear HttpOnly auth cookies.
  */
-export const logout = (): void => {
-  setAuthToken(undefined);
-
-  localStorage.removeItem("token");
-
-  localStorage.removeItem("user");
+export const logout = async (): Promise<void> => {
+  await apiClient.post("/auth/logout");
 };

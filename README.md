@@ -125,6 +125,44 @@ Together with descriptive `aria-label` attributes on add/remove controls, screen
 
 ---
 
+## Security & Authentication Architecture
+
+The frontend auth client layer in `src/api/client.ts` and `src/context/AuthContext.tsx` is designed around HttpOnly cookies and volatile in-memory tokens, keeping long-lived credentials out of browser storage.
+
+### Volatile In-Memory Storage
+
+Ephemeral JWT access tokens are held strictly in volatile React component state inside `AuthContext` and mirrored to the Axios client module via `setAccessToken()`. Tokens are never written to `localStorage` or `sessionStorage`, eliminating exposure to client-side storage sniffing (XSS-driven token theft, malicious extensions, or shared-device inspection).
+
+Only non-sensitive user metadata—name, email, role, and permissions—is persisted under the `auth_user` key so the UI can hydrate on reload without retaining the credential itself.
+
+### Secure Cookie Pass-Through
+
+The shared Axios instance is initialized with `withCredentials: true`, instructing the browser to attach HttpOnly cookies on every request and accept `Set-Cookie` directives on responses. Refresh and session cookies travel natively across the application lifecycle without JavaScript ever reading or serializing them.
+
+Cookie-driven endpoints (`/auth/login`, `/auth/refresh`, `/auth/logout`) intentionally skip the `Authorization` header so the server can authenticate via HttpOnly cookies alone when no in-memory access token is present.
+
+### Silent Interceptor Refresh Queue
+
+When an API call returns `401 Unauthorized`, the Axios response interceptor does not force an immediate logout. Instead, it issues a single background `POST /auth/refresh` where the server reads the HttpOnly refresh cookie and returns a new ephemeral access token.
+
+While that refresh call is in flight, all concurrent outgoing requests are held in a temporary queue. On success, the fresh token is applied in memory, queued requests are reissued with an updated `Authorization: Bearer` header, and the original failed call is retried. On failure, the interceptor clears the local session profile and redirects to `/login`.
+
+Session hydration on startup follows the same contract: if `auth_user` exists locally, the app silently calls `/auth/refresh` before marking the session authenticated.
+
+### Backend Integration Contract
+
+The Spring Boot API must expose the following endpoints under `/api/auth`:
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /auth/login` | Authenticate credentials, set the HttpOnly refresh cookie, return `{ token, ...user }` |
+| `POST /auth/refresh` | Validate the refresh cookie, return `{ token }` |
+| `POST /auth/logout` | Invalidate the server session and clear auth cookies |
+
+**CORS requirement:** the backend must respond with `Access-Control-Allow-Credentials: true` and a strict, explicit `Access-Control-Allow-Origin` value (for example, `http://localhost:5173`). Wildcard origins (`*`) are incompatible with credentialed cross-origin requests and will break cookie transmission.
+
+---
+
 ## 📦 Prerequisites
 
 Before running this project, ensure you have:
