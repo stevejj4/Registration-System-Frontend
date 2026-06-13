@@ -88,6 +88,43 @@ Run `npm run build` to inspect generated chunk sizes under `dist/assets/`.
 
 ---
 
+## Accessibility (a11y) Architecture
+
+The registration flow includes a dedicated accessibility layer that keeps form controls, validation feedback, and dynamic UI changes perceivable to assistive technologies.
+
+### Primitive Input Wiring
+
+Shared form primitives in `src/components/ui/` (`TextInput`, `SelectInput`, `DateInput`) enforce a consistent ARIA contract across all registration steps.
+
+- **Stable IDs:** each field accepts a unique `id` passed through to the underlying control
+- **Label association:** labels use `htmlFor` to link visually and programmatically to their input
+- **Required state:** required fields expose `aria-required` when applicable
+- **Error linkage:** when validation fails, controls set `aria-invalid` and `aria-describedby` pointing at a companion error element (`{fieldId}-error` with `role="alert"`)
+
+Registration forms (`PrincipalMemberForm`, `NextOfKinForm`, `DependantsForm`) supply predictable, step-scoped IDs (for example, `principal-first-name`, `nok-phone-number`, `dependant-{id}-first-name`) so errors and summary links resolve reliably.
+
+### Focus-Managed Error Summary
+
+`MemberRegistration.tsx` renders a validation error summary when submission fails. The summary is announced immediately and becomes the keyboard focus target.
+
+- **Live region:** `role="alert"` and `aria-live="assertive"` surface failures without requiring the user to hunt for inline messages
+- **Programmatic focus:** a `tabIndex={-1}` container receives focus via `useEffect` as soon as the summary appears
+- **Actionable links:** each listed error is a link mapped through `FIELD_TARGETS` to a concrete field ID and human-readable label
+- **Lazy-form coordination:** clicking a link (or failing validation for a hidden step) calls `setShowNextOfKin` / `setShowDependants` to mount deferred form chunks, then focuses the target field after a double `requestAnimationFrame` so lazy-loaded inputs exist in the DOM
+
+This pattern keeps code-split wizard stages compatible with WCAG-oriented error recovery: users hear the problem, land on the summary, and can jump directly to the offending field—even when that field lives in a previously collapsed section.
+
+### Dynamic Live Regions
+
+`DependantsForm.tsx` maintains a visually hidden `aria-live="polite"` region (`role="status"`, `aria-atomic="true"`) for row-level changes that are not otherwise announced.
+
+- **Add row:** updating the live region with *"Dependant added"* when a new dependant is inserted
+- **Remove row:** announcing *"Dependant row N removed"* when a row is deleted, using the row’s display index
+
+Together with descriptive `aria-label` attributes on add/remove controls, screen reader users receive immediate feedback as the dependants list grows or shrinks during data entry.
+
+---
+
 ## 📦 Prerequisites
 
 Before running this project, ensure you have:

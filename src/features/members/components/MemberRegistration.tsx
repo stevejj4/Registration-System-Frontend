@@ -1,4 +1,12 @@
-import React, { Suspense, lazy, useState } from "react";
+import React, {
+  Suspense,
+  lazy,
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   PrincipalMember,
   Dependant,
@@ -30,6 +38,97 @@ function FormSpinner() {
   );
 }
 
+interface ErrorSummaryItem {
+  key: string;
+  fieldId: string;
+  linkText: string;
+  revealNok?: boolean;
+  revealDependants?: boolean;
+}
+
+const FIELD_TARGETS: Record<
+  Exclude<keyof ValidationError, "general">,
+  { fieldId: string; label: string; revealNok?: boolean; revealDependants?: boolean }
+> = {
+  principalFirstName: { fieldId: "principal-first-name", label: "Principal first name" },
+  principalLastName: { fieldId: "principal-last-name", label: "Principal last name" },
+  principalNationalID: { fieldId: "principal-national-id", label: "Principal national ID" },
+  principalGender: { fieldId: "principal-gender", label: "Principal gender" },
+  principalPhoneNumber: { fieldId: "principal-phone-number", label: "Principal phone number" },
+  principalDateOfBirth: { fieldId: "principal-date-of-birth", label: "Principal date of birth" },
+  principalGroupName: { fieldId: "principal-group-name", label: "Principal group name" },
+  nextOfKinFirstName: {
+    fieldId: "nok-first-name",
+    label: "Next of kin first name",
+    revealNok: true,
+  },
+  nextOfKinLastName: {
+    fieldId: "nok-last-name",
+    label: "Next of kin last name",
+    revealNok: true,
+  },
+  nextOfKinRelationship: {
+    fieldId: "nok-relationship",
+    label: "Next of kin relationship",
+    revealNok: true,
+  },
+  nextOfKinGender: {
+    fieldId: "nok-gender",
+    label: "Next of kin gender",
+    revealNok: true,
+  },
+  nextOfKinIdNumber: {
+    fieldId: "nok-id-number",
+    label: "Next of kin ID number",
+    revealNok: true,
+  },
+  nextOfKinPhoneNumber: {
+    fieldId: "nok-phone-number",
+    label: "Next of kin phone number",
+    revealNok: true,
+  },
+  nextOfKinDateOfBirth: {
+    fieldId: "nok-date-of-birth",
+    label: "Next of kin date of birth",
+    revealNok: true,
+  },
+};
+
+function buildErrorSummaryItems(
+  validationErrors: ValidationError,
+  dependants: Dependant[]
+): ErrorSummaryItem[] {
+  const items: ErrorSummaryItem[] = [];
+
+  (Object.keys(FIELD_TARGETS) as Array<keyof typeof FIELD_TARGETS>).forEach((key) => {
+    const message = validationErrors[key];
+    if (!message) return;
+
+    const target = FIELD_TARGETS[key];
+    items.push({
+      key,
+      fieldId: target.fieldId,
+      linkText: `${target.label}: ${message}`,
+      revealNok: target.revealNok,
+      revealDependants: target.revealDependants,
+    });
+  });
+
+  if (validationErrors.general) {
+    const firstDependant = dependants[0];
+    items.push({
+      key: "general",
+      fieldId: firstDependant
+        ? `dependant-${firstDependant.id}-first-name`
+        : "dependants-general-error",
+      linkText: `Dependants: ${validationErrors.general}`,
+      revealDependants: true,
+    });
+  }
+
+  return items;
+}
+
 interface Props {
   onSuccess: (memberId: string) => void;
   onCancel: () => void;
@@ -41,6 +140,9 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showNextOfKin, setShowNextOfKin] = useState(false);
   const [showDependants, setShowDependants] = useState(false);
+  const [showErrorSummary, setShowErrorSummary] = useState(false);
+
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   const [principal, setPrincipal] = useState<PrincipalMember>({
     firstName: "",
@@ -63,6 +165,63 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
   });
 
   const [dependants, setDependants] = useState<Dependant[]>([]);
+
+  const errorSummaryItems = useMemo(
+    () => buildErrorSummaryItems(errors, dependants),
+    [errors, dependants]
+  );
+
+  const revealSectionsForErrors = useCallback(
+    (validationErrors: ValidationError) => {
+      const hasNokErrors = [
+        validationErrors.nextOfKinFirstName,
+        validationErrors.nextOfKinLastName,
+        validationErrors.nextOfKinRelationship,
+        validationErrors.nextOfKinGender,
+        validationErrors.nextOfKinIdNumber,
+        validationErrors.nextOfKinPhoneNumber,
+        validationErrors.nextOfKinDateOfBirth,
+      ].some((e) => e !== null);
+
+      if (hasNokErrors) {
+        setShowNextOfKin(true);
+      }
+      if (validationErrors.general || dependants.length > 0) {
+        setShowDependants(true);
+      }
+    },
+    [dependants.length]
+  );
+
+  const focusField = useCallback((fieldId: string) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(fieldId)?.focus();
+      });
+    });
+  }, []);
+
+  const handleErrorLinkClick = (
+    event: React.MouseEvent<HTMLAnchorElement>,
+    item: ErrorSummaryItem
+  ) => {
+    event.preventDefault();
+
+    if (item.revealNok) {
+      setShowNextOfKin(true);
+    }
+    if (item.revealDependants) {
+      setShowDependants(true);
+    }
+
+    focusField(item.fieldId);
+  };
+
+  useEffect(() => {
+    if (showErrorSummary && errorSummaryItems.length > 0) {
+      errorSummaryRef.current?.focus();
+    }
+  }, [showErrorSummary, errorSummaryItems]);
 
   const addDependant = () => {
     if (!showDependants) {
@@ -90,26 +249,8 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     setDependants(dependants.filter((d) => d.id !== id));
   };
 
-  const revealSectionsForErrors = (validationErrors: ValidationError) => {
-    const hasNokErrors = [
-      validationErrors.nextOfKinFirstName,
-      validationErrors.nextOfKinLastName,
-      validationErrors.nextOfKinRelationship,
-      validationErrors.nextOfKinGender,
-      validationErrors.nextOfKinIdNumber,
-      validationErrors.nextOfKinPhoneNumber,
-      validationErrors.nextOfKinDateOfBirth,
-    ].some((e) => e !== null);
-
-    if (hasNokErrors) {
-      setShowNextOfKin(true);
-    }
-    if (validationErrors.general || dependants.length > 0) {
-      setShowDependants(true);
-    }
-  };
-
   const handleSubmit = async () => {
+    setShowErrorSummary(false);
     setErrors(initialValidationError);
 
     try {
@@ -119,10 +260,12 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
       );
 
       if (duplicateMember) {
-        setErrors((prev) => ({
-          ...prev,
+        const duplicateErrors: ValidationError = {
+          ...initialValidationError,
           principalNationalID: "A member with this National ID already exists",
-        }));
+        };
+        setErrors(duplicateErrors);
+        setShowErrorSummary(true);
         return;
       }
     } catch (error) {
@@ -138,6 +281,7 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
 
     const hasErrors = Object.values(newErrors).some((error) => error !== null);
     if (hasErrors) {
+      setShowErrorSummary(true);
       return;
     }
 
@@ -147,6 +291,7 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
   const handleConfirmSubmit = async () => {
     setShowConfirmation(false);
     setLoading(true);
+    setShowErrorSummary(false);
     setErrors(initialValidationError);
 
     const convertedDependants: DependantDTO[] = dependants.map((dep) => ({
@@ -175,6 +320,8 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
         ...prev,
         general: result.error || "Registration failed",
       }));
+      setShowDependants(true);
+      setShowErrorSummary(true);
     }
   };
 
@@ -196,6 +343,37 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
             Fill in the member&apos;s information below
           </p>
         </div>
+
+        {showErrorSummary && errorSummaryItems.length > 0 && (
+          <div
+            ref={errorSummaryRef}
+            tabIndex={-1}
+            role="alert"
+            aria-live="assertive"
+            aria-labelledby="registration-error-summary-heading"
+            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl outline-none"
+          >
+            <h2
+              id="registration-error-summary-heading"
+              className="text-lg font-semibold text-red-800 mb-3"
+            >
+              There is a problem with your registration form
+            </h2>
+            <ol className="list-decimal list-inside space-y-2 text-sm text-red-700">
+              {errorSummaryItems.map((item) => (
+                <li key={item.key}>
+                  <a
+                    href={`#${item.fieldId}`}
+                    onClick={(event) => handleErrorLinkClick(event, item)}
+                    className="underline hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded"
+                  >
+                    {item.linkText}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
         <Suspense fallback={<FormSpinner />}>
           <PrincipalMemberForm
@@ -262,14 +440,6 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
             </button>
           </div>
         ) : null}
-
-        {errors.general && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm">
-            <div className="text-sm text-red-600 font-medium">
-              {errors.general}
-            </div>
-          </div>
-        )}
 
         <div className="flex justify-end space-x-4 mt-8">
           <button

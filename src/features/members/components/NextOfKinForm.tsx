@@ -4,9 +4,14 @@ import { NextOfKin } from "@/types/member";
 import TextInput from "@/components/ui/TextInput";
 import SelectInput from "@/components/ui/SelectInput";
 import DateInput from "@/components/ui/DateInput";
-import { displayTextToGender, genderToDisplayText, displayTextToRelationship, relationshipToDisplayText } from "@/utils/helpers";
+import {
+  displayTextToGender,
+  genderToDisplayText,
+  displayTextToRelationship,
+  relationshipToDisplayText,
+} from "@/utils/helpers";
 
-interface Props { // Consider renaming to NextOfKinFormProps for clarity
+interface Props {
   nextOfKin: NextOfKin;
   onChange: (nextOfKin: NextOfKin) => void;
   errors: {
@@ -46,22 +51,27 @@ export default function NextOfKinForm({ nextOfKin, onChange, errors }: Props) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <TextInput
+          id="nok-first-name"
           label="First Name"
           value={nextOfKin.firstName}
           onChange={(e) => onChange({ ...nextOfKin, firstName: e.target.value })}
           placeholder="Enter first name"
           error={errors.nextOfKinFirstName}
+          required
         />
 
         <TextInput
+          id="nok-last-name"
           label="Last Name"
           value={nextOfKin.lastName}
           onChange={(e) => onChange({ ...nextOfKin, lastName: e.target.value })}
           placeholder="Enter last name"
           error={errors.nextOfKinLastName}
+          required
         />
 
         <SelectInput
+          id="nok-relationship"
           label="Relationship"
           value={relationshipToDisplayText(nextOfKin.relationship)}
           onChange={(displayValue) => {
@@ -70,9 +80,11 @@ export default function NextOfKinForm({ nextOfKin, onChange, errors }: Props) {
           }}
           options={relationshipOptions}
           error={errors.nextOfKinRelationship}
+          required
         />
 
         <SelectInput
+          id="nok-gender"
           label="Gender"
           value={genderToDisplayText(nextOfKin.gender)}
           onChange={(displayValue) => {
@@ -81,33 +93,41 @@ export default function NextOfKinForm({ nextOfKin, onChange, errors }: Props) {
           }}
           options={genderOptions}
           error={errors.nextOfKinGender}
+          required
         />
 
         <TextInput
+          id="nok-id-number"
           label="ID Number"
           value={nextOfKin.idNumber}
           onChange={(e) => onChange({ ...nextOfKin, idNumber: e.target.value })}
           placeholder="Enter ID number"
           error={errors.nextOfKinIdNumber}
+          required
         />
 
         <TextInput
+          id="nok-phone-number"
           label="Phone Number"
           type="tel"
           value={nextOfKin.phoneNumber}
           onChange={(e) => onChange({ ...nextOfKin, phoneNumber: e.target.value })}
           placeholder="07XXXXXXXX"
           error={errors.nextOfKinPhoneNumber}
+          required
         />
 
         <DateInput
+          id="nok-date-of-birth"
           label="Date of Birth"
           value={nextOfKin.dateOfBirth}
           onChange={(value) => onChange({ ...nextOfKin, dateOfBirth: value })}
           error={errors.nextOfKinDateOfBirth}
+          required
         />
 
         <TextInput
+          id="nok-id-attachment-path"
           label="ID Attachment Path"
           value={
             typeof nextOfKin.idAttachmentPath === "string"
@@ -118,8 +138,11 @@ export default function NextOfKinForm({ nextOfKin, onChange, errors }: Props) {
             onChange({ ...nextOfKin, idAttachmentPath: e.target.value })
           }
           placeholder="uploads/ids/filename.png"
+          aria-describedby="nok-id-attachment-hint"
         />
-        <div className="text-xs text-gray-500 mt-1">Optional: Path to ID attachment file</div>
+        <div id="nok-id-attachment-hint" className="text-xs text-gray-500 mt-1">
+          Optional: Path to ID attachment file
+        </div>
       </div>
     </div>
   );

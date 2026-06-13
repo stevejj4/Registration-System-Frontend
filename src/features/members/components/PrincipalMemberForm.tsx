@@ -10,7 +10,7 @@ interface Props {
   principal: PrincipalMember;
   onChange: (principal: PrincipalMember) => void;
   errors: {
-    principalFirstName: string | null; // 
+    principalFirstName: string | null;
     principalLastName: string | null;
     principalNationalID: string | null;
     principalGender: string | null;
@@ -32,30 +32,37 @@ export default function PrincipalMemberForm({ principal, onChange, errors }: Pro
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <TextInput
+          id="principal-first-name"
           label="First Name"
           value={principal.firstName}
           onChange={(e) => onChange({ ...principal, firstName: e.target.value })}
           placeholder="Enter first name"
           error={errors.principalFirstName}
+          required
         />
 
         <TextInput
+          id="principal-last-name"
           label="Last Name"
           value={principal.lastName}
           onChange={(e) => onChange({ ...principal, lastName: e.target.value })}
           placeholder="Enter last name"
           error={errors.principalLastName}
+          required
         />
 
         <TextInput
+          id="principal-national-id"
           label="National ID"
           value={principal.nationalID}
           onChange={(e) => onChange({ ...principal, nationalID: e.target.value })}
           placeholder="Enter national ID (6–10 digits)"
           error={errors.principalNationalID}
+          required
         />
 
         <SelectInput
+          id="principal-gender"
           label="Gender"
           value={genderToDisplayText(principal.gender)}
           onChange={(displayValue) => {
@@ -68,33 +75,39 @@ export default function PrincipalMemberForm({ principal, onChange, errors }: Pro
             { value: "Other", label: "Other" },
           ]}
           error={errors.principalGender}
+          required
         />
 
         <TextInput
+          id="principal-phone-number"
           label="Phone Number"
           type="tel"
           value={principal.phoneNumber}
           onChange={(e) => onChange({ ...principal, phoneNumber: e.target.value })}
           placeholder="07XXXXXXXX"
           error={errors.principalPhoneNumber}
+          required
         />
 
         <DateInput
+          id="principal-date-of-birth"
           label="Date of Birth"
           value={principal.dateOfBirth}
           onChange={(value) => onChange({ ...principal, dateOfBirth: value })}
           error={errors.principalDateOfBirth}
+          required
         />
 
         <TextInput
+          id="principal-group-name"
           label="Group Name"
           value={principal.groupName ?? ""}
           onChange={(e) => onChange({ ...principal, groupName: e.target.value })}
           placeholder="Enter group name"
           error={errors.principalGroupName}
+          required
         />
       </div>
     </div>
   );
 }
-
