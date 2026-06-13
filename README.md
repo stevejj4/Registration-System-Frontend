@@ -165,7 +165,7 @@ The Spring Boot API must expose the following endpoints under `/api/auth`:
 
 ## Quality Assurance & Testing Strategy
 
-The frontend test suite runs network-isolated unit and integration specs against critical auth, data-fetching, and form behavior—without requiring a live Spring Boot instance.
+The frontend test suite runs **11 total automated specs**—network-isolated unit and integration tests against critical auth, data-fetching, and form behavior—without requiring a live Spring Boot instance.
 
 ### Core Test Infrastructure
 
@@ -181,20 +181,24 @@ The shared setup file (`src/testing/setup.ts`) starts the MSW server before each
 
 | Area | Test file | Scenarios covered |
 |---|---|---|
-| Data fetching helper | `src/hooks/useApiCall.test.ts` | Success lifecycle (`loading` → `data` → `onSuccess`); failure lifecycle (`error`, `loading` false, `onError`); `reset()` state cleanup |
-| Cookie auth context | `src/context/AuthContext.test.tsx` | Successful login (user state, `auth_user` metadata, in-memory token); silent hydration pass on startup (`POST /auth/refresh` before layout auth); logout sequence (`POST /auth/logout`, session purge); 401 concurrent request interceptor queue (single refresh, queued retries, successful reissue) |
-| Form accessibility | `src/features/members/components/PrincipalMemberForm.a11y.test.tsx` | axe-core scans on rendered registration forms |
+| Data fetching helper | `src/hooks/useApiCall.test.ts` (3 specs) | Success lifecycle (`loading` → `data` → `onSuccess`); failure lifecycle (`error`, `loading` false, `onError`); `reset()` state cleanup |
+| Cookie auth context | `src/context/AuthContext.test.tsx` (5 specs) | Successful login (user state, `auth_user` metadata, in-memory token); silent hydration pass on startup (`POST /auth/refresh` before layout auth); logout sequence (`POST /auth/logout`, session purge); 401 concurrent request interceptor queue (single refresh, queued retries, successful reissue) |
+| Principal form a11y | `src/features/members/components/PrincipalMemberForm.a11y.test.tsx` (1 spec) | `vitest-axe` scan — zero critical labeling or control violations |
+| Next of kin form a11y | `src/features/members/components/NextOfKinForm.a11y.test.tsx` (1 spec) | `vitest-axe` scan — zero critical labeling or control violations |
+| Dependants form a11y | `src/features/members/components/DependantsForm.a11y.test.tsx` (1 spec) | `vitest-axe` scan — zero critical labeling or control violations |
+
+**Suite total:** 11 passing specs across 5 test files.
 
 ### Automated Accessibility Passes
 
-`vitest-axe` is registered in the test setup and used to run automated compliance scans directly against rendered form components. The template suite targets high-priority rules such as missing `<label>` associations and unnamed buttons, and can be extended to `NextOfKinForm` and `DependantsForm` using the same pattern.
+`vitest-axe` is registered in the test setup and runs automated compliance scans directly against all three registration sub-forms: `PrincipalMemberForm`, `NextOfKinForm`, and `DependantsForm`. Each suite renders the form with the shared testing configuration, invokes `axe(container)`, and asserts **zero critical rendering or labeling violations**—including missing `<label>` associations and unnamed interactive controls (`label`, `button-name` rules enabled).
 
 ### CLI Commands
 
 | Command | Purpose |
 |---|---|
 | `npm test` | Run Vitest in watch mode during local development |
-| `npm run test:run` | Execute the full suite once (CI / pre-merge pipelines) |
+| `npm run test:run` | Execute all 11 specs once (CI / pre-merge pipelines) |
 
 ---
 

@@ -48,10 +48,12 @@ function MemberDashboardPage() {
 function MemberRegistrationPage() {
   const navigate = useNavigate();
   return (
-    <MemberRegistration
-      onSuccess={(memberId) => navigate(`/members/${memberId}`)}
-      onCancel={() => navigate("/members")}
-    />
+    <Suspense fallback={<RouteSpinner />}>
+      <MemberRegistration
+        onSuccess={(memberId) => navigate(`/members/${memberId}`)}
+        onCancel={() => navigate("/members")}
+      />
+    </Suspense>
   );
 }
 
