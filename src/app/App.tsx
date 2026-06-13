@@ -1,11 +1,9 @@
-import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { Suspense, lazy } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 import Login from "@/features/auth/Login";
 import ForgotPassword from "@/features/auth/ForgotPassword";
 import ResetPassword from "@/features/auth/ResetPassword";
-import AdminDashboard from "@/features/admin/AdminDashboard";
-import UserList from "@/features/admin/UserList";
 
 import PublicRoute from "@/components/PublicRoute";
 import RequireAuth from "@/components/RequireAuth";
@@ -16,12 +14,26 @@ import AuthLoadingScreen from "@/components/AuthLoadingScreen";
 import {
   MemberListPage,
   MemberDetailsPage,
-  MemberRegistrationPage,
 } from "@/components/routes/MemberRoutes";
 import { Dashboard } from "@/features/dashboard";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { PERMISSIONS } from "@/types/permissions";
+
+const AdminDashboard = lazy(
+  () => import("@/features/admin/AdminDashboard")
+);
+const UserList = lazy(() => import("@/features/admin/UserList"));
+const MemberRegistration = lazy(
+  () => import("@/features/members/components/MemberRegistration")
+);
+
+function RouteSpinner() {
+  return (
+    <div className="flex items-center justify-center min-h-[12rem] py-12">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+    </div>
+  );
+}
 
 function MemberDashboardPage() {
   const navigate = useNavigate();
@@ -29,6 +41,16 @@ function MemberDashboardPage() {
     <Dashboard
       onNavigateToRegistration={() => navigate("/register")}
       onNavigateToMembers={() => navigate("/members")}
+    />
+  );
+}
+
+function MemberRegistrationPage() {
+  const navigate = useNavigate();
+  return (
+    <MemberRegistration
+      onSuccess={(memberId) => navigate(`/members/${memberId}`)}
+      onCancel={() => navigate("/members")}
     />
   );
 }
@@ -84,7 +106,13 @@ export default function App() {
       </Route>
 
       <Route element={<RequireAuth />}>
-        <Route element={<ProtectedLayout />}>
+        <Route
+          element={
+            <Suspense fallback={<RouteSpinner />}>
+              <ProtectedLayout />
+            </Suspense>
+          }
+        >
           <Route index element={<RoleHomeRedirect />} />
 
           <Route

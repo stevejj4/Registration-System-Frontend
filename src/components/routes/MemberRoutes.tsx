@@ -1,10 +1,6 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  MemberList,
-  MemberDetails,
-  MemberRegistration,
-} from "@/features/members";
+import { MemberList, MemberDetails } from "@/features/members";
 
 export const MemberListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -25,16 +21,6 @@ export const MemberDetailsPage: React.FC = () => {
     <MemberDetails
       memberId={id}
       onBack={() => navigate("/members")}
-    />
-  );
-};
-
-export const MemberRegistrationPage: React.FC = () => {
-  const navigate = useNavigate();
-  return (
-    <MemberRegistration
-      onSuccess={(memberId) => navigate(`/members/${memberId}`)}
-      onCancel={() => navigate("/members")}
     />
   );
 };

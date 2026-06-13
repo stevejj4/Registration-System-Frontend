@@ -52,6 +52,42 @@ It communicates with a RESTful Spring Boot backend and implements a clean, scala
 
 ---
 
+## Performance Optimization & Code Splitting
+
+The frontend uses **route-level** and **component-level** code splitting to reduce the initial JavaScript payload and load feature code only when it is needed.
+
+### Route-Level Splitting
+
+Heavy authenticated routes are lazy-loaded in `src/app/App.tsx` using `React.lazy()` and rendered inside a `React.Suspense` boundary with a minimal inline spinner fallback (`RouteSpinner`).
+
+- **Lazy-loaded pages:** `AdminDashboard`, `UserList`, and `MemberRegistration`
+- **Eager-loaded routes:** lightweight public auth screens (`Login`, `ForgotPassword`, `ResetPassword`)
+- **Suspense boundary:** wraps `ProtectedLayout`, so lazy route chunks load smoothly without layout flicker
+
+Each lazy page compiles into an isolated Vite bundle and is fetched on first navigation to that route.
+
+### Component-Level Form Splitting
+
+The multi-step member registration flow in `MemberRegistration.tsx` defers sub-form downloads until the user advances through the wizard.
+
+- **Lazy-loaded forms:** `PrincipalMemberForm`, `NextOfKinForm`, `DependantsForm`
+- **Step 1:** principal form loads immediately when `/register` is opened
+- **Steps 2 & 3:** next-of-kin and dependants chunks load only after the user clicks the **Continue** boundaries
+- **Suspense per section:** each form step has its own `React.Suspense` fallback (`FormSpinner`)
+- **Validation safety:** if submit validation fails for a hidden section, that section is revealed automatically so errors remain visible
+
+### Architecture Fixes
+
+Barrel re-exports were removed to prevent Vite from pulling registration code into the main bundle.
+
+- **Removed:** `MemberRegistration` re-export from `src/features/members/index.ts`
+- **Direct imports:** `App.tsx` lazy-loads registration from `@/features/members/components/MemberRegistration`
+- **Result:** `MemberRegistration` compiles as a dedicated chunk; the initial landing bundle stays leaner
+
+Run `npm run build` to inspect generated chunk sizes under `dist/assets/`.
+
+---
+
 ## 📦 Prerequisites
 
 Before running this project, ensure you have:
@@ -104,3 +140,4 @@ getUsers();
 createUser(data);
 updateUser(id, data);
 deleteUser(id);
+```
