@@ -163,6 +163,41 @@ The Spring Boot API must expose the following endpoints under `/api/auth`:
 
 ---
 
+## Quality Assurance & Testing Strategy
+
+The frontend test suite runs network-isolated unit and integration specs against critical auth, data-fetching, and form behavior—without requiring a live Spring Boot instance.
+
+### Core Test Infrastructure
+
+Tests are powered by **Vitest**, **React Testing Library**, and **Mock Service Worker (MSW)**.
+
+- **Vitest** (`vitest.config.ts`) — Vite-native test runner with `jsdom`, path aliases, and global setup
+- **React Testing Library** — renders components and hooks in realistic user-facing scenarios
+- **MSW** (`src/testing/mocks/handlers.ts`, `src/testing/mocks/server.ts`) — intercepts `http://localhost:9090/api/*` at the network boundary so specs never hit a real backend or manually mock Axios/fetch
+
+The shared setup file (`src/testing/setup.ts`) starts the MSW server before each run, resets handlers and browser storage after every test, and wires jest-dom matchers.
+
+### Verified Test Coverage Matrix
+
+| Area | Test file | Scenarios covered |
+|---|---|---|
+| Data fetching helper | `src/hooks/useApiCall.test.ts` | Success lifecycle (`loading` → `data` → `onSuccess`); failure lifecycle (`error`, `loading` false, `onError`); `reset()` state cleanup |
+| Cookie auth context | `src/context/AuthContext.test.tsx` | Successful login (user state, `auth_user` metadata, in-memory token); silent hydration pass on startup (`POST /auth/refresh` before layout auth); logout sequence (`POST /auth/logout`, session purge); 401 concurrent request interceptor queue (single refresh, queued retries, successful reissue) |
+| Form accessibility | `src/features/members/components/PrincipalMemberForm.a11y.test.tsx` | axe-core scans on rendered registration forms |
+
+### Automated Accessibility Passes
+
+`vitest-axe` is registered in the test setup and used to run automated compliance scans directly against rendered form components. The template suite targets high-priority rules such as missing `<label>` associations and unnamed buttons, and can be extended to `NextOfKinForm` and `DependantsForm` using the same pattern.
+
+### CLI Commands
+
+| Command | Purpose |
+|---|---|
+| `npm test` | Run Vitest in watch mode during local development |
+| `npm run test:run` | Execute the full suite once (CI / pre-merge pipelines) |
+
+---
+
 ## 📦 Prerequisites
 
 Before running this project, ensure you have:

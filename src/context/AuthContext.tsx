@@ -116,8 +116,6 @@ export const AuthProvider: React.FC<{
   useEffect(() => {
     if (user) {
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(AUTH_USER_KEY);
     }
   }, [user]);
   useEffect(() => {

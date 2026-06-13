@@ -37,7 +37,8 @@ export const useApiCall = <T,>( //
 /**
  * 
  */
-  const execute = useCallback(async () => { // execute function is defined using useCallback to ensure it has a stable reference -- what is stable in simple words -- 
+  const execute = useCallback(async () => {
+    setLoading(true);
     setError(null);
     try {
       const result = await apiCallRef.current();
