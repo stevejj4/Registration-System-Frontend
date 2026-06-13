@@ -81,14 +81,7 @@ export default function App() {
   return (
     <Routes>
       <Route element={<PublicRoute />}>
-        <Route
-          path="/login"
-          element={
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-              <Login />
-            </div>
-          }
-        />
+        <Route path="/login" element={<Login />} />
         <Route
           path="/forgot-password"
           element={
