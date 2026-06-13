@@ -135,7 +135,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               rangeStart={activityRangeStart}
               rangeEnd={activityRangeEnd}
               onPageChange={setActivityPage}
-              className="mt-4 rounded-md border border-gray-200 !bg-white"
+              className="mt-4 rounded-md border border-gray-200 bg-white!"
             />
           )}
         </div>
