@@ -9,7 +9,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onNavigate }) => {
-  const { user, navigation, navigationLoading } = useAuth();
+  const { user, navigation, navigationLoading, isAuthenticated } = useAuth();
 
   return (
     <aside
@@ -29,8 +29,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onNavigate }) => {
       </div>
 
       <nav className="flex-1 py-4">
-        {navigationLoading && navigation.length === 0 ? (
+        {isAuthenticated && navigationLoading && navigation.length === 0 ? (
           <p className="px-6 text-sm text-white/70">Loading menu…</p>
+        ) : null}
+
+        {isAuthenticated && !navigationLoading && navigation.length === 0 ? (
+          <p className="px-6 text-sm text-white/70">No menu items available.</p>
         ) : null}
 
         {navigation.map(({ title, route, icon }) => {

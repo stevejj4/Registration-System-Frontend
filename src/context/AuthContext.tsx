@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 
 import type {
@@ -61,6 +62,7 @@ export const AuthProvider: React.FC<{
   const [navigation, setNavigation] = useState<NavigationItemDTO[]>([]);
   const [navigationLoading, setNavigationLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const navigationRequestIdRef = useRef(0);
 
   const clearLocalSession = useCallback(() => {
     setUser(null);
@@ -68,18 +70,30 @@ export const AuthProvider: React.FC<{
     setNavigation([]);
     localStorage.removeItem(AUTH_USER_KEY);
     setAccessToken(null);
+    navigationRequestIdRef.current += 1;
   }, []);
 
   const loadNavigation = useCallback(async () => {
+    const requestId = navigationRequestIdRef.current + 1;
+    navigationRequestIdRef.current = requestId;
     setNavigationLoading(true);
+
     try {
       const items = await navigationApi.getNavigation();
-      setNavigation(items);
+
+      if (navigationRequestIdRef.current === requestId) {
+        setNavigation(items);
+      }
     } catch (err) {
       console.error("Navigation load failed:", err);
-      setNavigation([]);
+
+      if (navigationRequestIdRef.current === requestId) {
+        setNavigation([]);
+      }
     } finally {
-      setNavigationLoading(false);
+      if (navigationRequestIdRef.current === requestId) {
+        setNavigationLoading(false);
+      }
     }
   }, []);
 
@@ -106,7 +120,6 @@ export const AuthProvider: React.FC<{
       localStorage.removeItem(AUTH_USER_KEY);
     }
   }, [user]);
-
   useEffect(() => {
     const hydrate = async () => {
       try {
@@ -125,7 +138,6 @@ export const AuthProvider: React.FC<{
         try {
           const refreshedToken = await refreshAccessToken();
           setToken(refreshedToken);
-          await loadNavigation();
         } catch {
           clearLocalSession();
         }
@@ -138,7 +150,19 @@ export const AuthProvider: React.FC<{
     };
 
     void hydrate();
-  }, [clearLocalSession, loadNavigation]);
+  }, [clearLocalSession]);
+
+  const isAuthenticated = useMemo(() => {
+    return !!token && !!user;
+  }, [token, user]);
+
+  useEffect(() => {
+    if (loading || !isAuthenticated) {
+      return;
+    }
+
+    void loadNavigation();
+  }, [loading, isAuthenticated, loadNavigation]);
 
   const login = useCallback(
     async (payload: LoginRequestDTO): Promise<AuthUser> => {
@@ -158,12 +182,12 @@ export const AuthProvider: React.FC<{
         permissions: res.permissions ?? [],
       };
 
+      setAccessToken(res.token);
       setUser(resolvedUser);
       setToken(res.token);
-      await loadNavigation();
       return resolvedUser;
     },
-    [loadNavigation]
+    []
   );
 
   const logout = useCallback(async () => {
@@ -176,10 +200,6 @@ export const AuthProvider: React.FC<{
       window.location.replace("/login");
     }
   }, [clearLocalSession]);
-
-  const isAuthenticated = useMemo(() => {
-    return !!token && !!user;
-  }, [token, user]);
 
   const hasRole = useCallback(
     (role: UserRole) => {
@@ -196,10 +216,10 @@ export const AuthProvider: React.FC<{
   );
 
   const refreshNavigation = useCallback(async () => {
-    if (token) {
+    if (isAuthenticated) {
       await loadNavigation();
     }
-  }, [token, loadNavigation]);
+  }, [isAuthenticated, loadNavigation]);
 
   const value = useMemo(
     () => ({
