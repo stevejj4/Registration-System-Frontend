@@ -1,10 +1,38 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import TextInput from "@/components/ui/TextInput";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { getRoleHomePath } from "@/utils/routes";
+
+const INVALID_CREDENTIALS_MESSAGE = "Invalid email or password recheck your credentials.";
+const NETWORK_ERROR_MESSAGE =
+  "Unable to connect to the server. Please try again.";
+const UNEXPECTED_ERROR_MESSAGE =
+  "An unexpected error occurred. Please try again later.";
+
+/**
+ * Maps login failures to user-safe messages without exposing server details.
+ */
+function getLoginErrorMessage(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status;
+
+    if (status === 401 || status === 403) {
+      return INVALID_CREDENTIALS_MESSAGE;
+    }
+
+    if (!err.response) {
+      return NETWORK_ERROR_MESSAGE;
+    }
+
+    return UNEXPECTED_ERROR_MESSAGE;
+  }
+
+  return UNEXPECTED_ERROR_MESSAGE;
+}
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
@@ -26,7 +54,7 @@ export const Login: React.FC = () => {
       const user = await login({ email, password });
       navigate(getRoleHomePath(user.role), { replace: true });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(getLoginErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -84,7 +112,15 @@ export const Login: React.FC = () => {
                 disabled={loading}
               />
             </div>
-            {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+            {error && (
+              <p
+                role="alert"
+                aria-live="assertive"
+                className="text-red-600 text-sm py-1 mb-4"
+              >
+                {error}
+              </p>
+            )}
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? "Signing in..." : "Sign in"}
             </Button>
