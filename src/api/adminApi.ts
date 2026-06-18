@@ -112,7 +112,7 @@ export const updateUser = async (
   }
 };
 
-export const updateUserRole = async (
+export const updateUserRole = async ( //
   userId: string,
   newRole: UserRole
 ): Promise<void> => {

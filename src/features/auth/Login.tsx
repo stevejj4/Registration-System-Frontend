@@ -7,6 +7,9 @@ import TextInput from "@/components/ui/TextInput";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { getRoleHomePath } from "@/utils/routes";
 
+/**
+ * Error messages for login failures. These are user-friendly and do not expose server details.
+ */
 const INVALID_CREDENTIALS_MESSAGE = "Invalid email or password recheck your credentials.";
 const NETWORK_ERROR_MESSAGE =
   "Unable to connect to the server. Please try again.";
@@ -33,7 +36,11 @@ function getLoginErrorMessage(err: unknown): string {
 
   return UNEXPECTED_ERROR_MESSAGE;
 }
-
+/**
+ * Login component for user authentication. Handles email/password input, form submission, and error display.
+ * On successful login, redirects user to their role-specific home page.
+ * Displays success message if redirected from another page (e.g., after password reset).
+ */
 export const Login: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -59,7 +66,25 @@ export const Login: React.FC = () => {
       setLoading(false);
     }
   };
-
+/**
+ * main render function for the Login component. Displays the login form, handles user input, and shows error/success messages.
+ * @returns JSX.Element representing the login page.
+ * The layout includes a sidebar with branding and a form for email/password input. On smaller screens, the sidebar is hidden for better usability.
+ * Accessibility features include proper labeling of form fields and ARIA attributes for error messages.
+ * The form is disabled while a login attempt is in progress to prevent multiple submissions.
+ * Success messages (e.g., after password reset) are displayed prominently to inform the user of successful actions.
+ * Error messages are displayed in a user-friendly manner without exposing technical details, and are announced to assistive technologies for accessibility.
+ * The component uses Tailwind CSS for styling, ensuring a responsive and modern design.
+ * Overall, this component provides a secure and user-friendly login experience for the SUN Welfare Management System.
+ * Note: The actual authentication logic is handled by the useAuth hook, which abstracts away API calls and token management, allowing this component to focus on the user interface and experience.
+ * The component also uses React Router for navigation, enabling seamless redirection after successful login and handling of success messages passed via location state.
+ * This design ensures a clear separation of concerns, with the Login component focused on presentation and user interaction, while authentication logic is encapsulated in the useAuth hook and API layer.
+ * The use of TypeScript enhances type safety and developer experience, ensuring that the component's props and state are well-defined and reducing the likelihood of runtime errors.
+ * Overall, this Login component is a critical part of the user authentication flow, providing a secure and intuitive interface for users to access the SUN Welfare Management System.
+ * The component also includes a link to a "Forgot password?" page, allowing users to initiate the password reset process if they have trouble logging in. This enhances the user experience by providing a clear path for account recovery.
+ * The design of the login page is responsive, with a sidebar that provides branding and information about the system on larger screens, while focusing on the login form on smaller devices. This ensures that users have a consistent and accessible experience regardless of their device.
+ * In summary, the Login component is a well-designed and user-friendly interface for authenticating users in the SUN Welfare Management System, with robust error handling, accessibility features, and a responsive design that caters to a wide range of users and devices.
+ */
   return (
     <div className="min-h-screen w-full grid md:grid-cols-2">
       <aside
