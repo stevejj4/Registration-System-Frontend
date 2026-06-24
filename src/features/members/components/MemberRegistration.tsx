@@ -136,6 +136,7 @@ interface Props {
 
 export default function MemberRegistration({ onSuccess, onCancel }: Props) {
   const [loading, setLoading] = useState(false);
+  const [checkingPrincipal, setCheckingPrincipal] = useState(false);
   const [errors, setErrors] = useState<ValidationError>(initialValidationError);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showNextOfKin, setShowNextOfKin] = useState(false);
@@ -247,6 +248,83 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
 
   const removeDependant = (id: string) => {
     setDependants(dependants.filter((d) => d.id !== id));
+  };
+
+  const validatePrincipalStep = useCallback(async (): Promise<boolean> => {
+    setShowErrorSummary(false);
+
+    let principalErrors = validatePrincipal(principal, initialValidationError);
+    const hasLocalErrors = Object.values(principalErrors).some(
+      (error) => error !== null
+    );
+
+    if (hasLocalErrors) {
+      setErrors(principalErrors);
+      focusField(
+        buildErrorSummaryItems(principalErrors, dependants)[0]?.fieldId ??
+          "principal-first-name"
+      );
+      return false;
+    }
+
+    setCheckingPrincipal(true);
+
+    try {
+      const existingMembers = await memberApi.getAll();
+      const nationalId = principal.nationalID.trim();
+      const phoneNumber = principal.phoneNumber.trim();
+
+      const duplicateNationalId = existingMembers.some(
+        (member) => member.nationalID.trim() === nationalId
+      );
+      const duplicatePhoneNumber = existingMembers.some(
+        (member) => member.phoneNumber.trim() === phoneNumber
+      );
+
+      principalErrors = {
+        ...principalErrors,
+        principalNationalID: duplicateNationalId
+          ? "A member with this National ID already exists"
+          : null,
+        principalPhoneNumber: duplicatePhoneNumber
+          ? "A member with this phone number already exists"
+          : null,
+      };
+
+      const hasDuplicateErrors = Object.values(principalErrors).some(
+        (error) => error !== null
+      );
+
+      setErrors(principalErrors);
+
+      if (hasDuplicateErrors) {
+        focusField(
+          duplicateNationalId
+            ? "principal-national-id"
+            : "principal-phone-number"
+        );
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.warn("Failed to check duplicate principal details:", error);
+      setErrors({
+        ...principalErrors,
+        general: "Unable to verify existing members. Please try again.",
+      });
+      setShowErrorSummary(true);
+      return false;
+    } finally {
+      setCheckingPrincipal(false);
+    }
+  }, [dependants, focusField, principal]);
+
+  const handleContinueToNextOfKin = async () => {
+    const canContinue = await validatePrincipalStep();
+    if (canContinue) {
+      setShowNextOfKin(true);
+    }
   };
 
   const handleSubmit = async () => {
@@ -411,10 +489,11 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
           <div className="mb-8 flex justify-center">
             <button
               type="button"
-              onClick={() => setShowNextOfKin(true)}
-              className="px-6 py-3 border-2 border-blue-200 rounded-xl text-blue-700 font-medium hover:bg-blue-50 transition-all duration-200"
+              onClick={() => void handleContinueToNextOfKin()}
+              disabled={checkingPrincipal}
+              className="px-6 py-3 border-2 border-blue-200 rounded-xl text-blue-700 font-medium hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Continue to Next of Kin
+              {checkingPrincipal ? "Checking details..." : "Continue to Next of Kin"}
             </button>
           </div>
         )}
