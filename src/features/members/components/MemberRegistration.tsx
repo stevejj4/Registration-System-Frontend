@@ -174,6 +174,15 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
 
   const revealSectionsForErrors = useCallback(
     (validationErrors: ValidationError) => {
+      const hasPrincipalErrors = [
+        validationErrors.principalFirstName,
+        validationErrors.principalLastName,
+        validationErrors.principalNationalID,
+        validationErrors.principalGender,
+        validationErrors.principalPhoneNumber,
+        validationErrors.principalDateOfBirth,
+        validationErrors.principalGroupName,
+      ].some((e) => e !== null);
       const hasNokErrors = [
         validationErrors.nextOfKinFirstName,
         validationErrors.nextOfKinLastName,
@@ -184,14 +193,22 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
         validationErrors.nextOfKinDateOfBirth,
       ].some((e) => e !== null);
 
+      if (hasPrincipalErrors) {
+        setShowNextOfKin(false);
+        setShowDependants(false);
+        return;
+      }
       if (hasNokErrors) {
         setShowNextOfKin(true);
+        setShowDependants(false);
+        return;
       }
-      if (validationErrors.general || dependants.length > 0) {
+      if (validationErrors.general) {
+        setShowNextOfKin(true);
         setShowDependants(true);
       }
     },
-    [dependants.length]
+    []
   );
 
   const focusField = useCallback((fieldId: string) => {
@@ -208,11 +225,15 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
   ) => {
     event.preventDefault();
 
-    if (item.revealNok) {
-      setShowNextOfKin(true);
-    }
     if (item.revealDependants) {
+      setShowNextOfKin(true);
       setShowDependants(true);
+    } else if (item.revealNok) {
+      setShowNextOfKin(true);
+      setShowDependants(false);
+    } else {
+      setShowNextOfKin(false);
+      setShowDependants(false);
     }
 
     focusField(item.fieldId);
@@ -327,6 +348,37 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     }
   };
 
+  const validateNextOfKinStep = useCallback((): boolean => {
+    setShowErrorSummary(false);
+
+    const nextOfKinErrors = validateNextOfKin(
+      nextOfKin,
+      initialValidationError
+    );
+    const hasNextOfKinErrors = Object.values(nextOfKinErrors).some(
+      (error) => error !== null
+    );
+
+    setErrors(nextOfKinErrors);
+
+    if (hasNextOfKinErrors) {
+      focusField(
+        buildErrorSummaryItems(nextOfKinErrors, dependants)[0]?.fieldId ??
+          "nok-first-name"
+      );
+      return false;
+    }
+
+    return true;
+  }, [dependants, focusField, nextOfKin]);
+
+  const handleContinueToDependants = () => {
+    const canContinue = validateNextOfKinStep();
+    if (canContinue) {
+      setShowDependants(true);
+    }
+  };
+
   const handleSubmit = async () => {
     setShowErrorSummary(false);
     setErrors(initialValidationError);
@@ -403,6 +455,10 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     }
   };
 
+  const isPrincipalStep = !showNextOfKin;
+  const isNextOfKinStep = showNextOfKin && !showDependants;
+  const isDependantsStep = showDependants;
+
   return (
     <>
       <div className="max-w-5xl mx-auto px-4 py-8">
@@ -453,52 +509,78 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
           </div>
         )}
 
-        <Suspense fallback={<FormSpinner />}>
-          <PrincipalMemberForm
-            principal={principal}
-            onChange={setPrincipal}
-            errors={{
-              principalFirstName: errors.principalFirstName,
-              principalLastName: errors.principalLastName,
-              principalNationalID: errors.principalNationalID,
-              principalGender: errors.principalGender,
-              principalPhoneNumber: errors.principalPhoneNumber,
-              principalDateOfBirth: errors.principalDateOfBirth,
-              principalGroupName: errors.principalGroupName,
-            }}
-          />
-        </Suspense>
+        {isPrincipalStep && (
+          <>
+            <Suspense fallback={<FormSpinner />}>
+              <PrincipalMemberForm
+                principal={principal}
+                onChange={setPrincipal}
+                errors={{
+                  principalFirstName: errors.principalFirstName,
+                  principalLastName: errors.principalLastName,
+                  principalNationalID: errors.principalNationalID,
+                  principalGender: errors.principalGender,
+                  principalPhoneNumber: errors.principalPhoneNumber,
+                  principalDateOfBirth: errors.principalDateOfBirth,
+                  principalGroupName: errors.principalGroupName,
+                }}
+              />
+            </Suspense>
 
-        {showNextOfKin ? (
-          <Suspense fallback={<FormSpinner />}>
-            <NextOfKinForm
-              nextOfKin={nextOfKin}
-              onChange={setNextOfKin}
-              errors={{
-                nextOfKinFirstName: errors.nextOfKinFirstName,
-                nextOfKinLastName: errors.nextOfKinLastName,
-                nextOfKinRelationship: errors.nextOfKinRelationship,
-                nextOfKinGender: errors.nextOfKinGender,
-                nextOfKinIdNumber: errors.nextOfKinIdNumber,
-                nextOfKinPhoneNumber: errors.nextOfKinPhoneNumber,
-                nextOfKinDateOfBirth: errors.nextOfKinDateOfBirth,
-              }}
-            />
-          </Suspense>
-        ) : (
-          <div className="mb-8 flex justify-center">
-            <button
-              type="button"
-              onClick={() => void handleContinueToNextOfKin()}
-              disabled={checkingPrincipal}
-              className="px-6 py-3 border-2 border-blue-200 rounded-xl text-blue-700 font-medium hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {checkingPrincipal ? "Checking details..." : "Continue to Next of Kin"}
-            </button>
-          </div>
+            <div className="mb-8 flex justify-center">
+              <button
+                type="button"
+                onClick={() => void handleContinueToNextOfKin()}
+                disabled={checkingPrincipal}
+                className="px-6 py-3 border-2 border-blue-200 rounded-xl text-blue-700 font-medium hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {checkingPrincipal ? "Checking details..." : "Continue to Next of Kin"}
+              </button>
+            </div>
+          </>
         )}
 
-        {showDependants ? (
+        {isNextOfKinStep && (
+          <>
+            <Suspense fallback={<FormSpinner />}>
+              <NextOfKinForm
+                nextOfKin={nextOfKin}
+                onChange={setNextOfKin}
+                errors={{
+                  nextOfKinFirstName: errors.nextOfKinFirstName,
+                  nextOfKinLastName: errors.nextOfKinLastName,
+                  nextOfKinRelationship: errors.nextOfKinRelationship,
+                  nextOfKinGender: errors.nextOfKinGender,
+                  nextOfKinIdNumber: errors.nextOfKinIdNumber,
+                  nextOfKinPhoneNumber: errors.nextOfKinPhoneNumber,
+                  nextOfKinDateOfBirth: errors.nextOfKinDateOfBirth,
+                }}
+              />
+            </Suspense>
+
+            <div className="mb-8 flex justify-between gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNextOfKin(false);
+                  setShowDependants(false);
+                }}
+                className="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-all duration-200"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={handleContinueToDependants}
+                className="px-6 py-3 border-2 border-blue-200 rounded-xl text-blue-700 font-medium hover:bg-blue-50 transition-all duration-200"
+              >
+                Continue to Dependants
+              </button>
+            </div>
+          </>
+        )}
+
+        {isDependantsStep && (
           <Suspense fallback={<FormSpinner />}>
             <DependantsForm
               dependants={dependants}
@@ -508,17 +590,7 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
               errors={{ general: errors.general }}
             />
           </Suspense>
-        ) : showNextOfKin ? (
-          <div className="mb-8 flex justify-center">
-            <button
-              type="button"
-              onClick={() => setShowDependants(true)}
-              className="px-6 py-3 border-2 border-blue-200 rounded-xl text-blue-700 font-medium hover:bg-blue-50 transition-all duration-200"
-            >
-              Continue to Dependants
-            </button>
-          </div>
-        ) : null}
+        )}
 
         <div className="flex justify-end space-x-4 mt-8">
           <button
@@ -529,24 +601,36 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
           >
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-8 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-md hover:shadow-lg"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                Registering...
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="w-5 h-5 mr-2" />
-                Register Member
-              </>
-            )}
-          </button>
+          {isDependantsStep && (
+            <button
+              type="button"
+              onClick={() => setShowDependants(false)}
+              className="px-8 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading}
+            >
+              Previous
+            </button>
+          )}
+          {isDependantsStep && (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="px-8 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-md hover:shadow-lg"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Registering...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-5 h-5 mr-2" />
+                  Register Member
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
