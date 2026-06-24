@@ -6,6 +6,7 @@ import PrincipalMemberForm from "./PrincipalMemberForm";
 import type { PrincipalMember } from "@/types/member";
 
 const emptyPrincipal: PrincipalMember = {
+  registrationType: "INDIVIDUAL",
   firstName: "",
   lastName: "",
   nationalID: "",
@@ -23,6 +24,11 @@ const emptyErrors = {
   principalPhoneNumber: null,
   principalDateOfBirth: null,
   principalGroupName: null,
+  principalRegistrationType: null,
+  principalCountyId: null,
+  principalSubCountyId: null,
+  principalWardId: null,
+  principalGroupId: null,
 };
 
 /**

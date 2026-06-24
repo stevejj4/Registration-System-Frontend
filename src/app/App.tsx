@@ -26,6 +26,7 @@ const UserList = lazy(() => import("@/features/admin/UserList"));
 const MemberRegistration = lazy(
   () => import("@/features/members/components/MemberRegistration")
 );
+const GroupManagement = lazy(() => import("@/features/groups/GroupManagement"));
 
 function RouteSpinner() {
   return (
@@ -142,6 +143,15 @@ export default function App() {
             element={
               <ProtectedRoute requiredPermissions={[PERMISSIONS.MEMBER_CREATE]}>
                 <MemberRegistrationPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/groups"
+            element={
+              <ProtectedRoute requiredPermissions={[PERMISSIONS.MEMBER_CREATE]}>
+                <GroupManagement />
               </ProtectedRoute>
             }
           />

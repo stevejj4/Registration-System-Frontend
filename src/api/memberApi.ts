@@ -11,6 +11,8 @@ import type {
   MemberDetailsDTO,
   MemberListItemDTO,
   RegisterMemberRequestDTO,
+  MemberExistsResponseDTO,
+  TransferMemberRequestDTO,
   DependantDTO,
   NextOfKinDTO,
   PrincipalMemberDTO,
@@ -42,6 +44,30 @@ const mergePrincipalIntoMember = (
 });
 
 export const memberApi = {
+  async exists(params: {
+    nationalId?: string;
+    phoneNumber?: string;
+  }): Promise<MemberExistsResponseDTO> {
+    try {
+      const res = await apiClient.get<MemberExistsResponseDTO>(
+        `${MEMBERS_BASE}/exists`,
+        {
+          params: {
+            nationalId: params.nationalId?.trim() || undefined,
+            phoneNumber: params.phoneNumber?.trim() || undefined,
+          },
+        }
+      );
+      return {
+        nationalIdExists: Boolean(res.data?.nationalIdExists),
+        phoneNumberExists: Boolean(res.data?.phoneNumberExists),
+      };
+    } catch (error) {
+      handleError(error, "Failed to verify member duplicates");
+      throw error;
+    }
+  },
+
   async getAll(): Promise<MemberListItemDTO[]> {
     try {
       const res = await apiClient.get(MEMBERS_BASE);
@@ -127,6 +153,21 @@ export const memberApi = {
       return mapped;
     } catch (error) {
       handleError(error, "Failed to update member");
+      throw error;
+    }
+  },
+
+  async transferMember(
+    id: number | string,
+    data: TransferMemberRequestDTO
+  ): Promise<MemberDetailsDTO> {
+    const memberId = validateId(id, "principal member ID");
+
+    try {
+      const res = await apiClient.patch(`${MEMBERS_BASE}/${memberId}/transfer`, data);
+      return mapApiMemberResponse(res.data);
+    } catch (error) {
+      handleError(error, "Failed to transfer member");
       throw error;
     }
   },

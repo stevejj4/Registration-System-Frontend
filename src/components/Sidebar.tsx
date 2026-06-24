@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { resolveNavigationIcon } from "@/utils/navigationIcons";
+import { PERMISSIONS } from "@/types/permissions";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -9,7 +10,15 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onNavigate }) => {
-  const { user, navigation, navigationLoading, isAuthenticated } = useAuth();
+  const { user, navigation, navigationLoading, isAuthenticated, hasPermission } = useAuth();
+  const navigationItems = hasPermission(PERMISSIONS.MEMBER_CREATE)
+    ? [
+        ...navigation,
+        ...(navigation.some((item) => item.route === "/groups")
+          ? []
+          : [{ title: "Groups", route: "/groups", icon: "groups" }]),
+      ]
+    : navigation;
 
   return (
     <aside
@@ -37,7 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onNavigate }) => {
           <p className="px-6 text-sm text-white/70">No menu items available.</p>
         ) : null}
 
-        {navigation.map(({ title, route, icon }) => {
+        {navigationItems.map(({ title, route, icon }) => {
           const Icon = resolveNavigationIcon(icon);
           return (
             <NavLink

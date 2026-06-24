@@ -9,6 +9,12 @@ export interface SystemUser {
   email: string;
   role: UserRole;
   createdAt?: string;
+  countyId?: number;
+  countyName?: string;
+  subCountyId?: number;
+  subCountyName?: string;
+  wardIds?: number[];
+  wardNames?: string[];
 }
 
 /**
@@ -23,6 +29,16 @@ function mapSystemUser(raw: Record<string, unknown>): SystemUser {
     email: String(raw.email ?? ''),
     role: normalized ?? 'FACILITATOR',
     createdAt: raw.createdAt != null ? String(raw.createdAt) : undefined,
+    countyId: typeof raw.countyId === 'number' ? raw.countyId : undefined,
+    countyName: raw.countyName != null ? String(raw.countyName) : undefined,
+    subCountyId: typeof raw.subCountyId === 'number' ? raw.subCountyId : undefined,
+    subCountyName: raw.subCountyName != null ? String(raw.subCountyName) : undefined,
+    wardIds: Array.isArray(raw.wardIds)
+      ? raw.wardIds.map((id) => Number(id)).filter((id) => !Number.isNaN(id))
+      : [],
+    wardNames: Array.isArray(raw.wardNames)
+      ? raw.wardNames.map((name) => String(name))
+      : [],
   };
 }
 

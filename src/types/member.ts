@@ -5,11 +5,15 @@ import {
   RelationshipType,
 } from "./enums";
 
+export type RegistrationType = "INDIVIDUAL" | "GROUP";
+
 /**
  * Principal Member DTO
  */
 export interface PrincipalMemberDTO {
   id?: number;
+
+  registrationType?: RegistrationType;
 
   firstName: string;
 
@@ -22,6 +26,18 @@ export interface PrincipalMemberDTO {
   phoneNumber: string;
 
   groupName?: string;
+
+  countyId?: number;
+  countyName?: string;
+
+  subCountyId?: number;
+  subCountyName?: string;
+
+  wardId?: number;
+  wardName?: string;
+
+  groupId?: number;
+  groupCode?: string;
 
   dateOfBirth: string; // yyyy-MM-dd
 
@@ -85,6 +101,17 @@ export interface RegisterMemberRequestDTO {
   nextOfKin: NextOfKinDTO;
 
   dependants: DependantDTO[];
+}
+
+export interface MemberExistsResponseDTO {
+  nationalIdExists: boolean;
+  phoneNumberExists: boolean;
+}
+
+export interface TransferMemberRequestDTO {
+  wardId: number;
+  registrationType: RegistrationType;
+  groupId?: number;
 }
 
 /**

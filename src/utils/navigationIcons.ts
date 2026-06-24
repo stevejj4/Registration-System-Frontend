@@ -4,6 +4,7 @@ import {
   Users,
   UserPlus,
   ClipboardList,
+  UsersRound,
 } from "lucide-react";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -11,6 +12,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   users: Users,
   "user-plus": UserPlus,
   "clipboard-list": ClipboardList,
+  groups: UsersRound,
 };
 
 export function resolveNavigationIcon(icon: string): LucideIcon {

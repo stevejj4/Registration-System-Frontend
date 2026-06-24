@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { assignmentApi } from "@/api/assignmentApi";
+import { groupApi } from "@/api/groupApi";
 import { memberApi } from "@/api/memberApi";
 import { checkBackendConnectivity } from "@/api/client";
 import type {
@@ -6,10 +8,14 @@ import type {
   Dependant,
   NextOfKinDTO,
   PrincipalMemberDTO,
+  RegistrationType,
 } from "@/types/member";
-import { ArrowLeft, Edit3, Save, Plus, Trash2, User, Users, Heart } from "lucide-react";
+import type { MemberGroupDTO } from "@/types/group";
+import type { WardDTO } from "@/types/location";
+import { ArrowLeft, Edit3, Save, Plus, Trash2, User, Users, Heart, Repeat2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
+import Modal from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import HasRole from "@/components/HasRole";
 import HasPermission from "@/components/HasPermission";
@@ -82,6 +88,17 @@ export default function MemberDetails({ memberId, onBack }: Props) {
   const [dependantFormData, setDependantFormData] = useState<Partial<Dependant>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmType, setConfirmType] = useState<"member" | "nok" | null>(null);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferMode, setTransferMode] = useState<"ward" | "group">("ward");
+  const [transferWardId, setTransferWardId] = useState("");
+  const [transferRegistrationType, setTransferRegistrationType] =
+    useState<RegistrationType>("INDIVIDUAL");
+  const [transferGroupId, setTransferGroupId] = useState("");
+  const [transferWards, setTransferWards] = useState<WardDTO[]>([]);
+  const [transferGroups, setTransferGroups] = useState<MemberGroupDTO[]>([]);
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferDataLoading, setTransferDataLoading] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
 
   const resolvePrincipalId = useCallback((): number | null => {
     const fromPrincipal = tryValidateId(member?.principal?.id);
@@ -118,6 +135,62 @@ export default function MemberDetails({ memberId, onBack }: Props) {
     fetchMember();
   }, [fetchMember]);
 
+  useEffect(() => {
+    if (!transferOpen) return;
+
+    let active = true;
+    setTransferDataLoading(true);
+    assignmentApi
+      .getMyWards()
+      .then((wards) => {
+        if (active) setTransferWards(wards);
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setTransferError(
+            err instanceof Error ? err.message : "Failed to load transfer wards"
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setTransferDataLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [transferOpen]);
+
+  useEffect(() => {
+    if (!transferOpen || !transferWardId || transferRegistrationType !== "GROUP") {
+      setTransferGroups([]);
+      return;
+    }
+
+    let active = true;
+    setTransferDataLoading(true);
+    groupApi
+      .getGroups({ wardId: Number(transferWardId) })
+      .then((groups) => {
+        if (active) setTransferGroups(groups);
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setTransferError(
+            err instanceof Error ? err.message : "Failed to load groups"
+          );
+          setTransferGroups([]);
+        }
+      })
+      .finally(() => {
+        if (active) setTransferDataLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [transferOpen, transferRegistrationType, transferWardId]);
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
@@ -149,8 +222,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
           !p.lastName.trim() ||
           !p.nationalID.trim() ||
           !p.phoneNumber.trim() ||
-          !p.dateOfBirth.trim() ||
-          !p.groupName.trim()
+                  !p.dateOfBirth.trim()
         ) {
           showToast("Please fill in all required fields");
           return;
@@ -239,6 +311,61 @@ export default function MemberDetails({ memberId, onBack }: Props) {
   const openDeleteNokModal = () => {
     setConfirmType("nok");
     setConfirmOpen(true);
+  };
+
+  const openTransferModal = (mode: "ward" | "group") => {
+    if (!member) return;
+    setTransferMode(mode);
+    setTransferWardId(member.principal.wardId ? String(member.principal.wardId) : "");
+    setTransferRegistrationType(
+      mode === "group" || member.principal.registrationType === "GROUP"
+        ? "GROUP"
+        : "INDIVIDUAL"
+    );
+    setTransferGroupId(member.principal.groupId ? String(member.principal.groupId) : "");
+    setTransferError(null);
+    setTransferOpen(true);
+  };
+
+  const closeTransferModal = () => {
+    if (!transferLoading) setTransferOpen(false);
+  };
+
+  const handleTransferMember = async () => {
+    if (!member) return;
+    if (!transferWardId) {
+      setTransferError("Select the target ward.");
+      return;
+    }
+    if (transferRegistrationType === "GROUP" && !transferGroupId) {
+      setTransferError("Select the target group.");
+      return;
+    }
+
+    setTransferLoading(true);
+    setTransferError(null);
+    try {
+      const principalId = requirePrincipalId();
+      const updated = await memberApi.transferMember(principalId, {
+        wardId: Number(transferWardId),
+        registrationType: transferRegistrationType,
+        groupId:
+          transferRegistrationType === "GROUP"
+            ? Number(transferGroupId)
+            : undefined,
+      });
+      setMember(updated);
+      setTransferOpen(false);
+      showToast(
+        transferRegistrationType === "GROUP"
+          ? "Member transferred to selected group"
+          : "Member transferred to selected ward"
+      );
+    } catch (err: unknown) {
+      setTransferError(err instanceof Error ? err.message : "Transfer failed");
+    } finally {
+      setTransferLoading(false);
+    }
   };
 
   const handleConfirm = async () => {
@@ -430,10 +557,16 @@ export default function MemberDetails({ memberId, onBack }: Props) {
             <div className="flex space-x-2">
               <HasPermission permissions={PERMISSIONS.MEMBER_WRITE}>
                 {activeTab === "principal" && (
-                  <Button onClick={handleEdit} variant="primary" size="md">
-                    <Edit3 className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
+                  <>
+                    <Button onClick={() => openTransferModal("ward")} variant="outline" size="md">
+                      <Repeat2 className="w-4 h-4 mr-2" />
+                      Transfer Member
+                    </Button>
+                    <Button onClick={handleEdit} variant="primary" size="md">
+                      <Edit3 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  </>
                 )}
               </HasPermission>
               {canManageKinAndDependants && (
@@ -651,7 +784,19 @@ export default function MemberDetails({ memberId, onBack }: Props) {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Group Name</label>
-                    <p className="mt-1 text-gray-900">{member.principal.groupName}</p>
+                    <p className="mt-1 text-gray-900">{member.principal.groupName || "Individual"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Ward</label>
+                    <p className="mt-1 text-gray-900">{member.principal.wardName ?? "Not assigned"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Sub-county</label>
+                    <p className="mt-1 text-gray-900">{member.principal.subCountyName ?? "Not assigned"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">County</label>
+                    <p className="mt-1 text-gray-900">{member.principal.countyName ?? "Not assigned"}</p>
                   </div>
                 </div>
               </div>
@@ -1053,6 +1198,108 @@ export default function MemberDetails({ memberId, onBack }: Props) {
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={transferOpen}
+        title={transferMode === "group" ? "Transfer Member Group" : "Transfer Member"}
+        onClose={closeTransferModal}
+        maxWidth="lg"
+        footer={
+          <>
+            <Button variant="outline" onClick={closeTransferModal} disabled={transferLoading}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => void handleTransferMember()}
+              disabled={transferLoading || transferDataLoading}
+            >
+              {transferLoading ? "Transferring..." : "Confirm Transfer"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+            <p>
+              Current ward:{" "}
+              <strong>{member.principal.wardName ?? "Not assigned"}</strong>
+            </p>
+            <p>
+              Current group:{" "}
+              <strong>{member.principal.groupName || "Individual"}</strong>
+            </p>
+          </div>
+
+          {transferError && (
+            <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {transferError}
+            </p>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Target ward</label>
+            <select
+              value={transferWardId}
+              onChange={(event) => {
+                setTransferWardId(event.target.value);
+                setTransferGroupId("");
+              }}
+              disabled={transferLoading || transferDataLoading}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
+            >
+              <option value="">Select ward</option>
+              {transferWards.map((ward) => (
+                <option key={ward.id} value={ward.id}>
+                  {ward.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Transfer type</label>
+            <select
+              value={transferRegistrationType}
+              onChange={(event) => {
+                const nextType = event.target.value as RegistrationType;
+                setTransferRegistrationType(nextType);
+                if (nextType === "INDIVIDUAL") {
+                  setTransferGroupId("");
+                }
+              }}
+              disabled={transferLoading || transferMode === "group"}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
+            >
+              <option value="INDIVIDUAL">Individual member</option>
+              <option value="GROUP">Group member</option>
+            </select>
+          </div>
+
+          {transferRegistrationType === "GROUP" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Target group</label>
+              <select
+                value={transferGroupId}
+                onChange={(event) => setTransferGroupId(event.target.value)}
+                disabled={transferLoading || transferDataLoading || !transferWardId}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
+              >
+                <option value="">Select group</option>
+                {transferGroups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name} ({group.groupId})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <p className="text-xs text-gray-500">
+            Only wards and groups approved for your account are available.
+          </p>
+        </div>
+      </Modal>
 
       {/* Confirmation Modal */}
       <ConfirmationModal

@@ -28,9 +28,11 @@ It communicates with a RESTful Spring Boot backend and implements a clean, scala
 
 ## 🚀 Key Features
 
-- 🔐 JWT-based authentication (token storage & auto-injection)
+- 🔐 Cookie-based authentication with in-memory access tokens
 - 👥 Member registration and management system
 - 🧑‍💼 System user administration (create, update, delete users)
+- 🗺️ Location-aware assignments for admins, coordinators, and facilitators
+- 🔁 Member, ward, and group transfer workflows
 - 🧭 Backend-driven dynamic navigation
 - ⚙️ Centralized API client with Axios interceptors
 - 🚨 Global error handling with user-friendly messages
@@ -48,7 +50,7 @@ It communicates with a RESTful Spring Boot backend and implements a clean, scala
 - Axios
 - React Router
 - Spring Boot (Backend API)
-- LocalStorage (JWT persistence)
+- HttpOnly cookie session support
 
 ---
 
@@ -160,6 +162,32 @@ The Spring Boot API must expose the following endpoints under `/api/auth`:
 | `POST /auth/logout` | Invalidate the server session and clear auth cookies |
 
 **CORS requirement:** the backend must respond with `Access-Control-Allow-Credentials: true` and a strict, explicit `Access-Control-Allow-Origin` value (for example, `http://localhost:5173`). Wildcard origins (`*`) are incompatible with credentialed cross-origin requests and will break cookie transmission.
+
+---
+
+## Location-Aware Assignment & Transfer Workflows
+
+The frontend supports location-scoped operations for admins, coordinators, and facilitators. These workflows rely on backend-filtered assignment endpoints so the UI guides users without exposing unauthorized counties, sub-counties, wards, or groups.
+
+### Admin Assignment Transfers
+
+Admins can update where system users work from the user edit modal.
+
+- **Coordinators:** can be transferred to a different county and sub-county
+- **Facilitators:** can be transferred to a different county/sub-county and can have approved wards added or removed
+- **Cascading controls:** changing county resets sub-county and wards; changing sub-county resets wards
+- **Update payload:** user updates send `assignedRole`, `countyId`, `subCountyId`, and `wardIds` so the backend can validate role-specific assignment rules
+
+### Member and Group Transfers
+
+Member details expose transfer actions for users with `MEMBER_WRITE` permission.
+
+- **Transfer Member:** moves a member to another approved ward, optionally as an individual registration
+- **Transfer Group:** moves a member into a selected group within an approved ward
+- **Scoped data loading:** target wards come from `GET /api/v1/me/wards`; target groups come from `GET /api/v1/groups?wardId={wardId}`
+- **Backend validation:** `PATCH /api/v1/members/{id}/transfer` enforces that the selected ward and group are within the logged-in user’s allowed scope
+
+The transfer modal shows the member’s current ward and group before submission and refreshes the displayed member details after a successful transfer.
 
 ---
 

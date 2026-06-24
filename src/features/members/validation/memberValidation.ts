@@ -9,6 +9,11 @@ export interface ValidationError {
   principalPhoneNumber: string | null;
   principalDateOfBirth: string | null;
   principalGroupName?: string | null;
+  principalRegistrationType: string | null;
+  principalCountyId: string | null;
+  principalSubCountyId: string | null;
+  principalWardId: string | null;
+  principalGroupId: string | null;
   nextOfKinFirstName: string | null;
   nextOfKinLastName: string | null;
   nextOfKinRelationship: string | null;
@@ -27,6 +32,11 @@ export const initialValidationError: ValidationError = {
   principalPhoneNumber: null,
   principalDateOfBirth: null,
   principalGroupName: null,
+  principalRegistrationType: null,
+  principalCountyId: null,
+  principalSubCountyId: null,
+  principalWardId: null,
+  principalGroupId: null,
   nextOfKinFirstName: null,
   nextOfKinLastName: null,
   nextOfKinRelationship: null,
@@ -40,6 +50,41 @@ export const initialValidationError: ValidationError = {
 export function validatePrincipal(principal: PrincipalMemberDTO, errors: ValidationError): ValidationError {
   const newErrors = { ...errors };
   let isValid = true;
+
+  if (!principal.registrationType) {
+    newErrors.principalRegistrationType = "Registration type is required";
+    isValid = false;
+  } else {
+    newErrors.principalRegistrationType = null;
+  }
+
+  if (!principal.countyId) {
+    newErrors.principalCountyId = "County is required";
+    isValid = false;
+  } else {
+    newErrors.principalCountyId = null;
+  }
+
+  if (!principal.subCountyId) {
+    newErrors.principalSubCountyId = "Sub-county is required";
+    isValid = false;
+  } else {
+    newErrors.principalSubCountyId = null;
+  }
+
+  if (!principal.wardId) {
+    newErrors.principalWardId = "Ward is required";
+    isValid = false;
+  } else {
+    newErrors.principalWardId = null;
+  }
+
+  if (principal.registrationType === "GROUP" && !principal.groupId) {
+    newErrors.principalGroupId = "Group is required for group registration";
+    isValid = false;
+  } else {
+    newErrors.principalGroupId = null;
+  }
 
   // First name validation
   if (!principal.firstName.trim()) {
@@ -93,13 +138,7 @@ export function validatePrincipal(principal: PrincipalMemberDTO, errors: Validat
     newErrors.principalDateOfBirth = null;
   }
 
-  // Group name validation
-  if (principal.groupName !== undefined && principal.groupName.trim() === "") {
-    newErrors.principalGroupName = "Group name is optional";
-    isValid = false;
-  } else {
-    newErrors.principalGroupName = null;
-  }
+  newErrors.principalGroupName = null;
 
   // Gender validation
   if (!principal.gender) {

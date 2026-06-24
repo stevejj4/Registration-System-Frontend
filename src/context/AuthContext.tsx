@@ -240,6 +240,12 @@ export const AuthProvider: React.FC<{
         fullName: res.fullName,
         role: normalizedRole,
         permissions: res.permissions ?? [],
+        countyId: res.countyId,
+        countyName: res.countyName,
+        subCountyId: res.subCountyId,
+        subCountyName: res.subCountyName,
+        wardIds: res.wardIds ?? [],
+        wardNames: res.wardNames ?? [],
       };
 
       setAccessToken(res.token);

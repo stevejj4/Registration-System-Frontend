@@ -147,6 +147,21 @@ export function mapPrincipalMember(
 
     groupName: safeString(api?.groupName),
 
+    registrationType:
+      safeString(api?.registrationType) === "GROUP" ? "GROUP" : "INDIVIDUAL",
+
+    countyId: safeNumber(api?.countyId),
+    countyName: safeOptionalString(api?.countyName),
+
+    subCountyId: safeNumber(api?.subCountyId),
+    subCountyName: safeOptionalString(api?.subCountyName),
+
+    wardId: safeNumber(api?.wardId),
+    wardName: safeOptionalString(api?.wardName),
+
+    groupId: safeNumber(api?.groupId),
+    groupCode: safeOptionalString(api?.groupCode),
+
     dateOfBirth: safeString(api?.dateOfBirth),
 
     registrationDate: safeString(api?.registrationDate),

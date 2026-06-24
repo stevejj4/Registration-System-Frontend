@@ -5,6 +5,16 @@ import { UserRole } from "./enums";
 // Re-export for convenience
 export type { UserRole } from "./enums";
 
+export interface AssignmentDTO {
+  role: UserRole;
+  countyId?: number;
+  countyName?: string;
+  subCountyId?: number;
+  subCountyName?: string;
+  wardIds: number[];
+  wardNames: string[];
+}
+
 /**
  * Login Request
  */
@@ -28,6 +38,13 @@ export interface AuthResponseDTO {
   fullName: string;
 
   permissions?: string[];
+
+  countyId?: number;
+  countyName?: string;
+  subCountyId?: number;
+  subCountyName?: string;
+  wardIds?: number[];
+  wardNames?: string[];
 }
 
 /**
@@ -46,6 +63,13 @@ export interface AuthUser {
   permissions: string[];
 
   token?: string;
+
+  countyId?: number;
+  countyName?: string;
+  subCountyId?: number;
+  subCountyName?: string;
+  wardIds?: number[];
+  wardNames?: string[];
 }
 
 /**
@@ -56,6 +80,9 @@ export interface CreateUserRequestDTO {
   lastName: string;
   email: string;
   assignedRole: UserRole;
+  countyId?: number;
+  subCountyId?: number;
+  wardIds?: number[];
 }
 
 export interface CreateUserResponseDTO {
@@ -67,6 +94,10 @@ export interface UpdateUserRequestDTO {
   firstName: string;
   lastName: string;
   email: string;
+  assignedRole?: UserRole;
+  countyId?: number;
+  subCountyId?: number;
+  wardIds?: number[];
 }
 
 /** @deprecated Use CreateUserRequestDTO */
@@ -90,6 +121,13 @@ export interface UserDTO {
   role: UserRole;
 
   createdAt?: string;
+
+  countyId?: number;
+  countyName?: string;
+  subCountyId?: number;
+  subCountyName?: string;
+  wardIds?: number[];
+  wardNames?: string[];
 }
 
 /**

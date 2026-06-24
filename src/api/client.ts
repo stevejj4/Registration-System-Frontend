@@ -21,6 +21,23 @@
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
 
+export type ApiFieldErrors = Record<string, string>;
+
+export class ApiError extends Error {
+  status?: number;
+  fieldErrors: ApiFieldErrors;
+
+  constructor(
+    message: string,
+    options: { status?: number; fieldErrors?: ApiFieldErrors } = {}
+  ) {
+    super(message);
+    this.name = "ApiError";
+    this.status = options.status;
+    this.fieldErrors = options.fieldErrors ?? {};
+  }
+}
+
 /**
  * Shared Axios instance for all backend communication.
  *
@@ -304,33 +321,55 @@ export const handleError = (error: unknown, fallback: string): never => {
     console.error("Server Message:", serverMessage);
     console.error("Validation Errors:", validationErrors);
 
+    const normalizedFieldErrors: ApiFieldErrors = {};
+    if (validationErrors && typeof validationErrors === "object") {
+      Object.entries(validationErrors).forEach(([field, messages]) => {
+        normalizedFieldErrors[field] = Array.isArray(messages)
+          ? messages.join(", ")
+          : String(messages);
+      });
+    }
+
     let errorMessage = serverMessage || fallback;
 
-    if (validationErrors && typeof validationErrors === "object") {
-      const errorMessages = Object.entries(validationErrors)
-        .map(
-          ([field, messages]) =>
-            `${field}: ${Array.isArray(messages) ? messages.join(", ") : messages}`
-        )
+    if (Object.keys(normalizedFieldErrors).length > 0) {
+      const errorMessages = Object.entries(normalizedFieldErrors)
+        .map(([field, message]) => `${field}: ${message}`)
         .join("; ");
       errorMessage += ` (${errorMessages})`;
     }
 
     switch (status) {
       case 400:
-        throw new Error(
-          errorMessage || "Invalid data provided. Please check your input and try again."
+        throw new ApiError(
+          errorMessage || "Invalid data provided. Please check your input and try again.",
+          { status, fieldErrors: normalizedFieldErrors }
         );
       case 401:
-        throw new Error("Unauthorized. Please log in again.");
+        throw new ApiError("Unauthorized. Please log in again.", {
+          status,
+          fieldErrors: normalizedFieldErrors,
+        });
       case 403:
-        throw new Error("You do not have permission to perform this action.");
+        throw new ApiError("You do not have permission to perform this action.", {
+          status,
+          fieldErrors: normalizedFieldErrors,
+        });
       case 404:
-        throw new Error("The requested resource was not found.");
+        throw new ApiError("The requested resource was not found.", {
+          status,
+          fieldErrors: normalizedFieldErrors,
+        });
       case 500:
-        throw new Error("Server error occurred. Please try again later.");
+        throw new ApiError("Server error occurred. Please try again later.", {
+          status,
+          fieldErrors: normalizedFieldErrors,
+        });
       default:
-        throw new Error(errorMessage);
+        throw new ApiError(errorMessage, {
+          status,
+          fieldErrors: normalizedFieldErrors,
+        });
     }
   }
 

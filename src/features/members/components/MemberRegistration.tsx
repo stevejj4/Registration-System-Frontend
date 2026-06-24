@@ -25,6 +25,14 @@ import {
 } from "../validation/memberValidation";
 import { registerMember } from "../services/registrationService";
 import { memberApi } from "@/api/memberApi";
+import { locationApi } from "@/api/locationApi";
+import { groupApi } from "@/api/groupApi";
+import { assignmentApi } from "@/api/assignmentApi";
+import { useAuth } from "@/hooks/useAuth";
+import type { ApiFieldErrors } from "@/api/client";
+import type { AssignmentDTO } from "@/types/auth";
+import type { CountyDTO, SubCountyDTO, WardDTO } from "@/types/location";
+import type { MemberGroupDTO } from "@/types/group";
 
 const PrincipalMemberForm = lazy(() => import("./PrincipalMemberForm"));
 const NextOfKinForm = lazy(() => import("./NextOfKinForm"));
@@ -57,6 +65,11 @@ const FIELD_TARGETS: Record<
   principalPhoneNumber: { fieldId: "principal-phone-number", label: "Principal phone number" },
   principalDateOfBirth: { fieldId: "principal-date-of-birth", label: "Principal date of birth" },
   principalGroupName: { fieldId: "principal-group-name", label: "Principal group name" },
+  principalRegistrationType: { fieldId: "principal-registration-type", label: "Registration type" },
+  principalCountyId: { fieldId: "principal-county", label: "County" },
+  principalSubCountyId: { fieldId: "principal-sub-county", label: "Sub-county" },
+  principalWardId: { fieldId: "principal-ward", label: "Ward" },
+  principalGroupId: { fieldId: "principal-group", label: "Group" },
   nextOfKinFirstName: {
     fieldId: "nok-first-name",
     label: "Next of kin first name",
@@ -129,12 +142,64 @@ function buildErrorSummaryItems(
   return items;
 }
 
+const API_FIELD_TO_VALIDATION_KEY: Record<string, keyof ValidationError> = {
+  "principal.firstName": "principalFirstName",
+  firstName: "principalFirstName",
+  "principal.lastName": "principalLastName",
+  lastName: "principalLastName",
+  "principal.nationalID": "principalNationalID",
+  "principal.nationalId": "principalNationalID",
+  nationalID: "principalNationalID",
+  nationalId: "principalNationalID",
+  "principal.gender": "principalGender",
+  gender: "principalGender",
+  "principal.phoneNumber": "principalPhoneNumber",
+  phoneNumber: "principalPhoneNumber",
+  "principal.dateOfBirth": "principalDateOfBirth",
+  dateOfBirth: "principalDateOfBirth",
+  "principal.registrationType": "principalRegistrationType",
+  registrationType: "principalRegistrationType",
+  "principal.countyId": "principalCountyId",
+  countyId: "principalCountyId",
+  "principal.subCountyId": "principalSubCountyId",
+  subCountyId: "principalSubCountyId",
+  "principal.wardId": "principalWardId",
+  wardId: "principalWardId",
+  "principal.groupId": "principalGroupId",
+  groupId: "principalGroupId",
+  "nextOfKin.firstName": "nextOfKinFirstName",
+  "nextOfKin.lastName": "nextOfKinLastName",
+  "nextOfKin.relationship": "nextOfKinRelationship",
+  "nextOfKin.gender": "nextOfKinGender",
+  "nextOfKin.idNumber": "nextOfKinIdNumber",
+  "nextOfKin.phoneNumber": "nextOfKinPhoneNumber",
+  "nextOfKin.dateOfBirth": "nextOfKinDateOfBirth",
+};
+
+function mapApiFieldErrors(fieldErrors?: ApiFieldErrors): Partial<ValidationError> {
+  if (!fieldErrors) return {};
+
+  return Object.entries(fieldErrors).reduce<Partial<ValidationError>>(
+    (acc, [field, message]) => {
+      const key = API_FIELD_TO_VALIDATION_KEY[field];
+      if (key) {
+        acc[key] = message;
+      } else {
+        acc.general = message;
+      }
+      return acc;
+    },
+    {}
+  );
+}
+
 interface Props {
   onSuccess: (memberId: string) => void;
   onCancel: () => void;
 }
 
 export default function MemberRegistration({ onSuccess, onCancel }: Props) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [checkingPrincipal, setCheckingPrincipal] = useState(false);
   const [errors, setErrors] = useState<ValidationError>(initialValidationError);
@@ -142,10 +207,21 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
   const [showNextOfKin, setShowNextOfKin] = useState(false);
   const [showDependants, setShowDependants] = useState(false);
   const [showErrorSummary, setShowErrorSummary] = useState(false);
+  const [counties, setCounties] = useState<CountyDTO[]>([]);
+  const [subCounties, setSubCounties] = useState<SubCountyDTO[]>([]);
+  const [wards, setWards] = useState<WardDTO[]>([]);
+  const [groups, setGroups] = useState<MemberGroupDTO[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState(false);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [assignment, setAssignment] = useState<AssignmentDTO | null>(null);
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
 
   const errorSummaryRef = useRef<HTMLDivElement>(null);
+  const effectiveRole = assignment?.role ?? user?.role;
+  const canSelectFullLocation = effectiveRole === "ADMIN";
 
   const [principal, setPrincipal] = useState<PrincipalMember>({
+    registrationType: "INDIVIDUAL",
     firstName: "",
     lastName: "",
     nationalID: "",
@@ -172,9 +248,184 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     [errors, dependants]
   );
 
+  const visibleWards = wards;
+
+  useEffect(() => {
+    let active = true;
+    setAssignmentLoading(true);
+    assignmentApi
+      .getMyAssignment()
+      .then((data) => {
+        if (active) setAssignment(data);
+      })
+      .catch((error) => {
+        console.warn("Failed to load assignment:", error);
+        if (active) {
+          setErrors((prev) => ({
+            ...prev,
+            principalCountyId: "Failed to load your assigned location",
+          }));
+        }
+      })
+      .finally(() => {
+        if (active) setAssignmentLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (canSelectFullLocation || !assignment) return;
+
+    setPrincipal((prev) => ({
+      ...prev,
+      countyId: assignment.countyId,
+      subCountyId: assignment.subCountyId,
+      wardId:
+        assignment.wardIds.length === 1
+          ? assignment.wardIds[0]
+          : prev.wardId,
+      groupId: undefined,
+    }));
+  }, [
+    assignment,
+    canSelectFullLocation,
+  ]);
+
+  useEffect(() => {
+    if (!canSelectFullLocation) return;
+
+    let active = true;
+    setLocationsLoading(true);
+    locationApi
+      .getCounties()
+      .then((items) => {
+        if (active) setCounties(items);
+      })
+      .catch((error) => {
+        console.warn("Failed to load counties:", error);
+        if (active) {
+          setErrors((prev) => ({
+            ...prev,
+            principalCountyId: "Failed to load counties",
+          }));
+        }
+      })
+      .finally(() => {
+        if (active) setLocationsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canSelectFullLocation]);
+
+  useEffect(() => {
+    if (!canSelectFullLocation || !principal.countyId) {
+      setSubCounties([]);
+      return;
+    }
+
+    let active = true;
+    setLocationsLoading(true);
+    locationApi
+      .getSubCounties(principal.countyId)
+      .then((items) => {
+        if (active) setSubCounties(items);
+      })
+      .catch((error) => {
+        console.warn("Failed to load sub-counties:", error);
+        if (active) {
+          setErrors((prev) => ({
+            ...prev,
+            principalSubCountyId: "Failed to load sub-counties",
+          }));
+        }
+      })
+      .finally(() => {
+        if (active) setLocationsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canSelectFullLocation, principal.countyId]);
+
+  useEffect(() => {
+    if (!principal.subCountyId) {
+      setWards([]);
+      return;
+    }
+
+    let active = true;
+    setLocationsLoading(true);
+    const wardsPromise = canSelectFullLocation
+      ? locationApi.getWards(principal.subCountyId)
+      : assignmentApi.getMyWards();
+
+    wardsPromise
+      .then((items) => {
+        if (active) setWards(items);
+      })
+      .catch((error) => {
+        console.warn("Failed to load wards:", error);
+        if (active) {
+          setErrors((prev) => ({
+            ...prev,
+            principalWardId: "Failed to load wards",
+          }));
+        }
+      })
+      .finally(() => {
+        if (active) setLocationsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canSelectFullLocation, principal.subCountyId]);
+
+  useEffect(() => {
+    if (principal.registrationType !== "GROUP" || !principal.wardId) {
+      setGroups([]);
+      return;
+    }
+
+    let active = true;
+    setGroupsLoading(true);
+    groupApi
+      .getGroups({ wardId: principal.wardId })
+      .then((items) => {
+        if (active) setGroups(items);
+      })
+      .catch((error) => {
+        console.warn("Failed to load groups:", error);
+        if (active) {
+          setErrors((prev) => ({
+            ...prev,
+            principalGroupId: "Failed to load groups",
+          }));
+        }
+      })
+      .finally(() => {
+        if (active) setGroupsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [principal.registrationType, principal.wardId]);
+
   const revealSectionsForErrors = useCallback(
     (validationErrors: ValidationError) => {
       const hasPrincipalErrors = [
+        validationErrors.principalRegistrationType,
+        validationErrors.principalCountyId,
+        validationErrors.principalSubCountyId,
+        validationErrors.principalWardId,
+        validationErrors.principalGroupId,
         validationErrors.principalFirstName,
         validationErrors.principalLastName,
         validationErrors.principalNationalID,
@@ -291,16 +542,12 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     setCheckingPrincipal(true);
 
     try {
-      const existingMembers = await memberApi.getAll();
-      const nationalId = principal.nationalID.trim();
-      const phoneNumber = principal.phoneNumber.trim();
-
-      const duplicateNationalId = existingMembers.some(
-        (member) => member.nationalID.trim() === nationalId
-      );
-      const duplicatePhoneNumber = existingMembers.some(
-        (member) => member.phoneNumber.trim() === phoneNumber
-      );
+      const duplicateResult = await memberApi.exists({
+        nationalId: principal.nationalID,
+        phoneNumber: principal.phoneNumber,
+      });
+      const duplicateNationalId = duplicateResult.nationalIdExists;
+      const duplicatePhoneNumber = duplicateResult.phoneNumberExists;
 
       principalErrors = {
         ...principalErrors,
@@ -384,17 +631,26 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     setErrors(initialValidationError);
 
     try {
-      const existingMembers = await memberApi.getAll();
-      const duplicateMember = existingMembers.find(
-        (member) => member.nationalID === principal.nationalID
-      );
+      const duplicateResult = await memberApi.exists({
+        nationalId: principal.nationalID,
+        phoneNumber: principal.phoneNumber,
+      });
+      const duplicateNationalId = duplicateResult.nationalIdExists;
+      const duplicatePhoneNumber = duplicateResult.phoneNumberExists;
 
-      if (duplicateMember) {
+      if (duplicateNationalId || duplicatePhoneNumber) {
         const duplicateErrors: ValidationError = {
           ...initialValidationError,
-          principalNationalID: "A member with this National ID already exists",
+          principalNationalID: duplicateNationalId
+            ? "A member with this National ID already exists"
+            : null,
+          principalPhoneNumber: duplicatePhoneNumber
+            ? "A member with this phone number already exists"
+            : null,
         };
         setErrors(duplicateErrors);
+        setShowNextOfKin(false);
+        setShowDependants(false);
         setShowErrorSummary(true);
         return;
       }
@@ -446,11 +702,16 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     if (result.success && result.memberId) {
       onSuccess(result.memberId);
     } else {
-      setErrors((prev) => ({
-        ...prev,
+      const serverErrors: ValidationError = {
+        ...initialValidationError,
+        ...mapApiFieldErrors(result.fieldErrors),
         general: result.error || "Registration failed",
-      }));
-      setShowDependants(true);
+      };
+      setErrors(serverErrors);
+      revealSectionsForErrors(serverErrors);
+      if (!result.fieldErrors || Object.keys(result.fieldErrors).length === 0) {
+        setShowDependants(true);
+      }
       setShowErrorSummary(true);
     }
   };
@@ -522,8 +783,24 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
                   principalGender: errors.principalGender,
                   principalPhoneNumber: errors.principalPhoneNumber,
                   principalDateOfBirth: errors.principalDateOfBirth,
-                  principalGroupName: errors.principalGroupName,
+                  principalGroupName: errors.principalGroupName ?? null,
+                  principalRegistrationType: errors.principalRegistrationType,
+                  principalCountyId: errors.principalCountyId,
+                  principalSubCountyId: errors.principalSubCountyId,
+                  principalWardId: errors.principalWardId,
+                  principalGroupId: errors.principalGroupId,
                 }}
+                counties={counties}
+                subCounties={subCounties}
+                wards={visibleWards}
+                groups={groups}
+                locationsLoading={locationsLoading || assignmentLoading}
+                groupsLoading={groupsLoading}
+                canSelectFullLocation={canSelectFullLocation}
+                assignedCountyName={assignment?.countyName ?? user?.countyName}
+                assignedSubCountyName={
+                  assignment?.subCountyName ?? user?.subCountyName
+                }
               />
             </Suspense>
 
