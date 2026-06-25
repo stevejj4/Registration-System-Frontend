@@ -231,19 +231,27 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
   );
 
   const summaryCards = useMemo(() => {
-    const groupMembers = members.filter((m) => Boolean(m.groupName)).length;
-    const activeMembers = members.filter(
-      (m) => (m.memberStatus ?? "ACTIVE").toUpperCase() === "ACTIVE"
-    ).length;
-    const pendingMembers = members.filter(
-      (m) => (m.memberStatus ?? "").toUpperCase() === "PENDING"
-    ).length;
-    const dormantMembers = members.filter(
-      (m) => (m.memberStatus ?? "").toUpperCase() === "DORMANT"
-    ).length;
-    const defaultMembers = members.filter(
-      (m) => (m.policyStatus ?? "").toUpperCase() === "DEFAULT"
-    ).length;
+    const groupMembers = members.filter((m) => Boolean(m.groupName?.trim())).length;
+    const individualMembers = members.length - groupMembers;
+    const statusCounts = members.reduce(
+      (counts, member) => {
+        const memberStatus = (member.memberStatus ?? "ACTIVE").toUpperCase();
+        const policyStatus = (member.policyStatus ?? "").toUpperCase();
+
+        if (policyStatus === "DEFAULT") {
+          counts.defaulters += 1;
+        } else if (memberStatus === "PENDING") {
+          counts.pending += 1;
+        } else if (memberStatus === "DORMANT") {
+          counts.dormant += 1;
+        } else {
+          counts.active += 1;
+        }
+
+        return counts;
+      },
+      { active: 0, pending: 0, dormant: 0, defaulters: 0 }
+    );
 
     return [
       {
@@ -253,32 +261,38 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
         accent: "bg-sky-500",
       },
       {
-        label: "Group Members",
+        label: "Individual Members",
+        value: individualMembers,
+        icon: UsersRound,
+        accent: "bg-sky-500",
+      },
+      {
+        label: "Members in a Group",
         value: groupMembers,
         icon: UsersRound,
         accent: "bg-sky-500",
       },
       {
         label: "Active Members",
-        value: activeMembers,
+        value: statusCounts.active,
         icon: CheckCircle2,
         accent: "bg-emerald-500",
       },
       {
         label: "Pending",
-        value: pendingMembers,
+        value: statusCounts.pending,
         icon: Clock3,
         accent: "bg-sky-500",
       },
       {
         label: "Dormant Members",
-        value: dormantMembers,
+        value: statusCounts.dormant,
         icon: Clock3,
         accent: "bg-sky-500",
       },
       {
-        label: "Default Members",
-        value: defaultMembers,
+        label: "Defaulters",
+        value: statusCounts.defaulters,
         icon: AlertCircle,
         accent: "bg-rose-500",
       },
@@ -359,7 +373,7 @@ export default function MemberList({ onSelectMember, selectedId }: Props) {
 
   return (
     <>
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
         {summaryCards.map((card) => (
           <div
             key={card.label}
