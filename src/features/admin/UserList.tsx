@@ -17,7 +17,7 @@ import { UpdateUserRequestDTO } from "@/types/auth";
 import { UserRole } from "@/types/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { isCurrentUserAccount } from "@/utils/userAccount";
-import { Search } from "lucide-react";
+import { RefreshCw, Search, ShieldCheck, UserCog, UsersRound } from "lucide-react";
 import { usePagination } from "@/hooks/usePagination";
 import Pagination from "@/components/ui/Pagination";
 
@@ -63,6 +63,39 @@ export default function UserList() {
         u.email.toLowerCase().includes(q)
     );
   }, [users, search]);
+
+  const userKpis = useMemo(() => {
+    const admins = users.filter((u) => u.role === "ADMIN").length;
+    const coordinators = users.filter((u) => u.role === "COORDINATOR").length;
+    const facilitators = users.filter((u) => u.role === "FACILITATOR").length;
+
+    return [
+      {
+        label: "Total Users",
+        value: admins + coordinators + facilitators,
+        icon: UsersRound,
+        accent: "bg-sky-500",
+      },
+      {
+        label: "Facilitators",
+        value: facilitators,
+        icon: UserCog,
+        accent: "bg-emerald-500",
+      },
+      {
+        label: "Coordinators",
+        value: coordinators,
+        icon: UserCog,
+        accent: "bg-violet-500",
+      },
+      {
+        label: "Admins",
+        value: admins,
+        icon: ShieldCheck,
+        accent: "bg-rose-500",
+      },
+    ];
+  }, [users]);
 
   const {
     page,
@@ -148,11 +181,17 @@ export default function UserList() {
   };
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <h3 className="text-lg font-medium">System Users</h3>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900">System Users</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage user accounts, roles, passwords, and assigned work areas.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={load} disabled={loading}>
+            <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
           <Button variant="primary" onClick={() => setCreateOpen(true)}>
@@ -161,19 +200,25 @@ export default function UserList() {
         </div>
       </div>
 
-      <div className="mb-4 max-w-md relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(0);
-          }}
-          placeholder="Search by name or email..."
-          aria-label="Search users"
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {userKpis.map((card) => (
+          <div
+            key={card.label}
+            className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-gray-500">{card.label}</p>
+                <p className="mt-3 text-2xl font-semibold text-gray-900">
+                  {new Intl.NumberFormat().format(card.value)}
+                </p>
+              </div>
+              <div className={`flex h-12 w-12 items-center justify-center rounded-full text-white ${card.accent}`}>
+                <card.icon className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {loading && <p className="text-gray-600 mb-2">Loading...</p>}
@@ -183,20 +228,41 @@ export default function UserList() {
         </p>
       )}
 
-      <div className="overflow-x-auto bg-white rounded-md border">
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-100 p-4">
+          <div className="max-w-md relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+              }}
+              placeholder="Search by name or email..."
+              aria-label="Search users"
+              className="w-full rounded-full border border-gray-200 py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
         <table className="w-full text-left">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 text-xs uppercase text-gray-600">
             <tr>
-              <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+              <th className="px-4 py-3 font-semibold">
+                User ID
+              </th>
+              <th className="px-4 py-3 font-semibold">
                 Name
               </th>
-              <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+              <th className="px-4 py-3 font-semibold">
                 Email
               </th>
-              <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+              <th className="px-4 py-3 font-semibold">
                 Role
               </th>
-              <th className="px-4 py-2 text-sm font-semibold text-gray-700">
+              <th className="px-4 py-3 font-semibold">
                 Actions
               </th>
             </tr>
@@ -204,7 +270,7 @@ export default function UserList() {
           <tbody>
             {paginatedUsers.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                   {search ? "No users match your search." : "No users found."}
                 </td>
               </tr>
@@ -214,9 +280,12 @@ export default function UserList() {
                 return (
                   <tr
                     key={u.id}
-                    className={`border-t ${isSelf ? "bg-blue-50/50" : ""}`}
+                    className={`border-t ${isSelf ? "bg-blue-50/50" : "hover:bg-gray-50"}`}
                   >
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-700">
+                      {u.id}
+                    </td>
+                    <td className="px-4 py-3">
                       <span className="font-medium">{u.fullName}</span>
                       {isSelf && (
                         <span className="ml-2 text-xs font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
@@ -224,8 +293,8 @@ export default function UserList() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-gray-700">{u.email}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-3 text-gray-700">{u.email}</td>
+                    <td className="px-4 py-3">
                       <select
                         value={u.role}
                         disabled={isSelf}
@@ -249,7 +318,7 @@ export default function UserList() {
                         )}
                       </select>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <Button
                           variant="outline"
@@ -292,6 +361,7 @@ export default function UserList() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <Pagination
