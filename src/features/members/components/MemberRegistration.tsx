@@ -207,6 +207,7 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
   const [showNextOfKin, setShowNextOfKin] = useState(false);
   const [showDependants, setShowDependants] = useState(false);
   const [showErrorSummary, setShowErrorSummary] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState("");
   const [counties, setCounties] = useState<CountyDTO[]>([]);
   const [subCounties, setSubCounties] = useState<SubCountyDTO[]>([]);
   const [wards, setWards] = useState<WardDTO[]>([]);
@@ -249,6 +250,20 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
   );
 
   const visibleWards = wards;
+  const regionOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(counties.map((county) => county.region).filter(Boolean))
+      ).sort() as string[],
+    [counties]
+  );
+  const visibleCounties = useMemo(
+    () =>
+      selectedRegion
+        ? counties.filter((county) => county.region === selectedRegion)
+        : counties,
+    [counties, selectedRegion]
+  );
 
   useEffect(() => {
     let active = true;
@@ -790,7 +805,10 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
                   principalWardId: errors.principalWardId,
                   principalGroupId: errors.principalGroupId,
                 }}
-                counties={counties}
+                regions={regionOptions}
+                selectedRegion={selectedRegion}
+                onRegionChange={setSelectedRegion}
+                counties={visibleCounties}
                 subCounties={subCounties}
                 wards={visibleWards}
                 groups={groups}

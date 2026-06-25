@@ -25,6 +25,9 @@ interface Props {
     principalWardId: string | null;
     principalGroupId: string | null;
   };
+  regions?: string[];
+  selectedRegion?: string;
+  onRegionChange?: (region: string) => void;
   counties?: CountyDTO[];
   subCounties?: SubCountyDTO[];
   wards?: WardDTO[];
@@ -40,6 +43,9 @@ export default function PrincipalMemberForm({
   principal,
   onChange,
   errors,
+  regions = [],
+  selectedRegion = "",
+  onRegionChange,
   counties = [],
   subCounties = [],
   wards = [],
@@ -82,6 +88,27 @@ export default function PrincipalMemberForm({
 
         {canSelectFullLocation ? (
           <>
+            <SelectInput
+              id="principal-region"
+              label="Region"
+              value={selectedRegion}
+              onChange={(value) => {
+                onRegionChange?.(value);
+                onChange({
+                  ...principal,
+                  countyId: undefined,
+                  subCountyId: undefined,
+                  wardId: undefined,
+                  groupId: undefined,
+                });
+              }}
+              options={regions.map((region) => ({
+                value: region,
+                label: region,
+              }))}
+              disabled={locationsLoading}
+            />
+
             <SelectInput
               id="principal-county"
               label="County"

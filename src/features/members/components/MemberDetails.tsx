@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { assignmentApi } from "@/api/assignmentApi";
-import { groupApi } from "@/api/groupApi";
+import { locationApi } from "@/api/locationApi";
 import { memberApi } from "@/api/memberApi";
+import { memberTransferApi } from "@/api/memberTransferApi";
 import { checkBackendConnectivity } from "@/api/client";
 import type {
   MemberDetailsDTO,
   Dependant,
   NextOfKinDTO,
   PrincipalMemberDTO,
-  RegistrationType,
 } from "@/types/member";
-import type { MemberGroupDTO } from "@/types/group";
 import type { WardDTO } from "@/types/location";
-import { ArrowLeft, Edit3, Save, Plus, Trash2, User, Users, Heart, Repeat2 } from "lucide-react";
+import type { CountyDTO, SubCountyDTO } from "@/types/location";
+import { ArrowLeft, Edit3, Save, Plus, Trash2, User, Users, Heart, Repeat2, FileText, CircleDollarSign, BriefcaseBusiness } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import Modal from "@/components/ui/Modal";
@@ -33,7 +32,7 @@ interface Props {
   onBack: () => void;
 }
 
-type TabType = "principal" | "nok" | "dependants";
+type TabType = "principal" | "nok" | "dependants" | "payments";
 
 type PrincipalFormState = {
   principal: {
@@ -78,7 +77,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
   const [member, setMember] = useState<MemberDetailsDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>("principal");
+  const [activeTab, setActiveTab] = useState<TabType>("nok");
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<
     PrincipalFormState | NokFormState | null
@@ -89,13 +88,14 @@ export default function MemberDetails({ memberId, onBack }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmType, setConfirmType] = useState<"member" | "nok" | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
-  const [transferMode, setTransferMode] = useState<"ward" | "group">("ward");
   const [transferWardId, setTransferWardId] = useState("");
-  const [transferRegistrationType, setTransferRegistrationType] =
-    useState<RegistrationType>("INDIVIDUAL");
-  const [transferGroupId, setTransferGroupId] = useState("");
+  const [transferReason, setTransferReason] = useState("");
+  const [transferRegion, setTransferRegion] = useState("");
+  const [transferCountyId, setTransferCountyId] = useState("");
+  const [transferSubCountyId, setTransferSubCountyId] = useState("");
   const [transferWards, setTransferWards] = useState<WardDTO[]>([]);
-  const [transferGroups, setTransferGroups] = useState<MemberGroupDTO[]>([]);
+  const [transferCounties, setTransferCounties] = useState<CountyDTO[]>([]);
+  const [transferSubCounties, setTransferSubCounties] = useState<SubCountyDTO[]>([]);
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferDataLoading, setTransferDataLoading] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
@@ -140,15 +140,15 @@ export default function MemberDetails({ memberId, onBack }: Props) {
 
     let active = true;
     setTransferDataLoading(true);
-    assignmentApi
-      .getMyWards()
-      .then((wards) => {
-        if (active) setTransferWards(wards);
+    locationApi
+      .getCounties()
+      .then((counties) => {
+        if (active) setTransferCounties(counties);
       })
       .catch((err: unknown) => {
         if (active) {
           setTransferError(
-            err instanceof Error ? err.message : "Failed to load transfer wards"
+            err instanceof Error ? err.message : "Failed to load transfer locations"
           );
         }
       })
@@ -162,25 +162,23 @@ export default function MemberDetails({ memberId, onBack }: Props) {
   }, [transferOpen]);
 
   useEffect(() => {
-    if (!transferOpen || !transferWardId || transferRegistrationType !== "GROUP") {
-      setTransferGroups([]);
+    if (!transferCountyId) {
+      setTransferSubCounties([]);
+      setTransferSubCountyId("");
+      setTransferWards([]);
+      setTransferWardId("");
       return;
     }
 
     let active = true;
     setTransferDataLoading(true);
-    groupApi
-      .getGroups({ wardId: Number(transferWardId) })
-      .then((groups) => {
-        if (active) setTransferGroups(groups);
+    locationApi
+      .getSubCounties(Number(transferCountyId))
+      .then((items) => {
+        if (active) setTransferSubCounties(items);
       })
       .catch((err: unknown) => {
-        if (active) {
-          setTransferError(
-            err instanceof Error ? err.message : "Failed to load groups"
-          );
-          setTransferGroups([]);
-        }
+        if (active) setTransferError(err instanceof Error ? err.message : "Failed to load sub-counties");
       })
       .finally(() => {
         if (active) setTransferDataLoading(false);
@@ -189,7 +187,33 @@ export default function MemberDetails({ memberId, onBack }: Props) {
     return () => {
       active = false;
     };
-  }, [transferOpen, transferRegistrationType, transferWardId]);
+  }, [transferCountyId]);
+
+  useEffect(() => {
+    if (!transferSubCountyId) {
+      setTransferWards([]);
+      setTransferWardId("");
+      return;
+    }
+
+    let active = true;
+    setTransferDataLoading(true);
+    locationApi
+      .getWards(Number(transferSubCountyId))
+      .then((items) => {
+        if (active) setTransferWards(items);
+      })
+      .catch((err: unknown) => {
+        if (active) setTransferError(err instanceof Error ? err.message : "Failed to load wards");
+      })
+      .finally(() => {
+        if (active) setTransferDataLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [transferSubCountyId]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -313,16 +337,13 @@ export default function MemberDetails({ memberId, onBack }: Props) {
     setConfirmOpen(true);
   };
 
-  const openTransferModal = (mode: "ward" | "group") => {
+  const openTransferModal = () => {
     if (!member) return;
-    setTransferMode(mode);
-    setTransferWardId(member.principal.wardId ? String(member.principal.wardId) : "");
-    setTransferRegistrationType(
-      mode === "group" || member.principal.registrationType === "GROUP"
-        ? "GROUP"
-        : "INDIVIDUAL"
-    );
-    setTransferGroupId(member.principal.groupId ? String(member.principal.groupId) : "");
+    setTransferRegion("");
+    setTransferCountyId("");
+    setTransferSubCountyId("");
+    setTransferWardId("");
+    setTransferReason("");
     setTransferError(null);
     setTransferOpen(true);
   };
@@ -333,12 +354,20 @@ export default function MemberDetails({ memberId, onBack }: Props) {
 
   const handleTransferMember = async () => {
     if (!member) return;
+    if (!transferCountyId) {
+      setTransferError("Select the target county.");
+      return;
+    }
+    if (!transferSubCountyId) {
+      setTransferError("Select the target sub-county.");
+      return;
+    }
     if (!transferWardId) {
       setTransferError("Select the target ward.");
       return;
     }
-    if (transferRegistrationType === "GROUP" && !transferGroupId) {
-      setTransferError("Select the target group.");
+    if (!transferReason.trim()) {
+      setTransferError("Enter the reason for this transfer.");
       return;
     }
 
@@ -346,21 +375,14 @@ export default function MemberDetails({ memberId, onBack }: Props) {
     setTransferError(null);
     try {
       const principalId = requirePrincipalId();
-      const updated = await memberApi.transferMember(principalId, {
+      await memberTransferApi.createRequest(principalId, {
+        countyId: Number(transferCountyId),
+        subCountyId: Number(transferSubCountyId),
         wardId: Number(transferWardId),
-        registrationType: transferRegistrationType,
-        groupId:
-          transferRegistrationType === "GROUP"
-            ? Number(transferGroupId)
-            : undefined,
+        reason: transferReason.trim(),
       });
-      setMember(updated);
       setTransferOpen(false);
-      showToast(
-        transferRegistrationType === "GROUP"
-          ? "Member transferred to selected group"
-          : "Member transferred to selected ward"
-      );
+      showToast("Transfer request sent for approval");
     } catch (err: unknown) {
       setTransferError(err instanceof Error ? err.message : "Transfer failed");
     } finally {
@@ -524,6 +546,369 @@ export default function MemberDetails({ memberId, onBack }: Props) {
     formData && "principal" in formData ? formData : null;
   const nokForm = formData && "firstName" in formData ? formData : null;
 
+  const principal = member.principal;
+  const fullName = `${principal.firstName} ${principal.lastName}`.trim();
+  const location = [principal.wardName, principal.subCountyName, principal.countyName]
+    .filter(Boolean)
+    .join(", ");
+  const memberStatus = "Pending";
+  const invoicesCount = member.dependants.length + (member.nextOfKin ? 1 : 0);
+
+  const detailSteps: Array<{ id: TabType; label: string; number: number }> = [
+    { id: "nok", label: "Next of Kin", number: 1 },
+    { id: "dependants", label: "Dependants", number: 2 },
+    { id: "payments", label: "Payments", number: 3 },
+  ];
+
+  const renderInfoRow = (
+    label: string,
+    value?: string | number | null,
+    editable = false
+  ) => (
+    <div className="grid grid-cols-[120px_1fr_20px] items-center border-b border-gray-100 py-3 text-sm">
+      <span className="font-semibold text-gray-700">{label}</span>
+      <span className="text-gray-800">{value || "-"}</span>
+      {editable ? <Edit3 className="h-4 w-4 text-emerald-500" /> : <span />}
+    </div>
+  );
+
+  return (
+    <div className="bg-gray-50 p-4 md:p-6">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-4 inline-flex items-center rounded bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back
+      </button>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[320px_1fr]">
+        <aside className="rounded-sm bg-white p-5 shadow-sm">
+          <div className="mb-4 rounded-sm bg-cyan-100 px-5 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-cyan-700">SUN WELFARE</h2>
+                <p className="text-xs text-cyan-700">Member Details</p>
+              </div>
+              <Users className="h-14 w-14 text-cyan-600" />
+            </div>
+          </div>
+
+          {renderInfoRow("Full Name :", fullName, true)}
+          {renderInfoRow("SHOFCO ID :", `SH-FS-${principal.id ?? routeMemberId ?? "-"}`)}
+          {renderInfoRow("ID Number :", principal.nationalID, true)}
+          {renderInfoRow("Mobile :", principal.phoneNumber, true)}
+          {renderInfoRow("Date of Birth :", principal.dateOfBirth, true)}
+          {renderInfoRow("E-mail :", "-", true)}
+          {renderInfoRow("Status :", memberStatus)}
+          {renderInfoRow("Subscription Expiry :", "-")}
+          {renderInfoRow("Group Name :", principal.groupName || "Individual")}
+          {renderInfoRow("Location :", location || "Not assigned")}
+
+          <div className="mt-5 space-y-2">
+            <HasPermission permissions={PERMISSIONS.MEMBER_WRITE}>
+              <Button
+                type="button"
+                onClick={() => openTransferModal()}
+                className="w-full bg-sky-500 hover:bg-sky-600"
+              >
+                <Repeat2 className="mr-2 h-4 w-4" />
+                Transfer Member
+              </Button>
+            </HasPermission>
+          </div>
+        </aside>
+
+        <main className="space-y-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {[
+              { label: "Invoices", value: invoicesCount, icon: FileText },
+              { label: "Total Payment", value: "KES. 0.00", icon: CircleDollarSign },
+              { label: "Claims", value: 0, icon: BriefcaseBusiness },
+            ].map((item) => (
+              <div key={item.label} className="rounded-sm bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">{item.label}</p>
+                    <p className="mt-3 text-lg font-semibold text-gray-900">{item.value}</p>
+                  </div>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-500 text-white">
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <section className="rounded-sm bg-white p-4 shadow-sm">
+            <div className="mb-5 grid grid-cols-3 bg-cyan-50">
+              {detailSteps.map((step) => {
+                const selected = activeTab === step.id;
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    onClick={() => setActiveTab(step.id)}
+                    className={`flex items-center gap-3 px-4 py-3 text-sm ${
+                      selected ? "bg-cyan-100 font-semibold text-gray-900" : "text-gray-600"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-8 w-8 items-center justify-center rounded-full border ${
+                        selected
+                          ? "border-sky-500 bg-sky-500 text-white"
+                          : "border-sky-500 bg-white text-sky-600"
+                      }`}
+                    >
+                      {step.number}
+                    </span>
+                    {step.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {activeTab === "nok" && (
+              <div>
+                <h3 className="mb-5 font-semibold text-gray-900">Next Of Kin Information</h3>
+                {member.nextOfKin ? (
+                  <div className="space-y-1">
+                    {renderInfoRow("Full Name :", `${member.nextOfKin.firstName} ${member.nextOfKin.lastName}`)}
+                    {renderInfoRow("Mobile :", member.nextOfKin.phoneNumber)}
+                    {renderInfoRow("Id Number :", member.nextOfKin.idNumber)}
+                    {renderInfoRow("E-mail :", "-")}
+                    {renderInfoRow("Relationship :", relationshipToDisplayText(member.nextOfKin.relationship))}
+                    {renderInfoRow("Status :", "-")}
+                  </div>
+                ) : (
+                  <p className="py-8 text-center text-gray-500">No next of kin recorded.</p>
+                )}
+              </div>
+            )}
+
+            {activeTab === "dependants" && (
+              <div>
+                <div className="mb-5 flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900">Dependants</h3>
+                  {canManageKinAndDependants && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setEditingDependant("new");
+                        setDependantFormData({
+                          firstName: "",
+                          lastName: "",
+                          relationship: "",
+                          gender: "",
+                          phoneNumber: "",
+                          dateOfBirth: "",
+                        });
+                      }}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Dependant
+                    </Button>
+                  )}
+                </div>
+                {member.dependants.length === 0 ? (
+                  <p className="py-8 text-center text-gray-500">No dependants added yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                        <tr>
+                          <th className="px-4 py-3">Full Name</th>
+                          <th className="px-4 py-3">Relationship</th>
+                          <th className="px-4 py-3">Gender</th>
+                          <th className="px-4 py-3">Mobile</th>
+                          <th className="px-4 py-3">Date of Birth</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {member.dependants.map((dependant) => (
+                          <tr key={dependant.id} className="border-b">
+                            <td className="px-4 py-3">
+                              {dependant.firstName} {dependant.lastName}
+                            </td>
+                            <td className="px-4 py-3">{dependant.relationship}</td>
+                            <td className="px-4 py-3">{genderToDisplayText(dependant.gender)}</td>
+                            <td className="px-4 py-3">{dependant.phoneNumber || "-"}</td>
+                            <td className="px-4 py-3">{dependant.dateOfBirth}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "payments" && (
+              <div>
+                <h3 className="mb-5 font-semibold text-gray-900">Payments</h3>
+                <p className="py-8 text-center text-gray-500">
+                  No payment records are available for this member.
+                </p>
+              </div>
+            )}
+          </section>
+        </main>
+      </div>
+
+      <Modal
+        isOpen={transferOpen}
+        title="Transfer Member"
+        onClose={closeTransferModal}
+        maxWidth="lg"
+        footer={
+          <>
+            <Button variant="outline" onClick={closeTransferModal} disabled={transferLoading}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => void handleTransferMember()}
+              disabled={transferLoading || transferDataLoading}
+            >
+              {transferLoading ? "Requesting..." : "Request Transfer"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+            <p>
+              Current ward: <strong>{principal.wardName ?? "Not assigned"}</strong>
+            </p>
+            <p>
+              Current group: <strong>{principal.groupName || "Individual"}</strong>
+            </p>
+          </div>
+
+          {transferError && (
+            <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {transferError}
+            </p>
+          )}
+
+          <label className="block text-sm font-medium text-gray-700">
+            Target region
+            <select
+              value={transferRegion}
+              onChange={(event) => {
+                setTransferRegion(event.target.value);
+                setTransferCountyId("");
+                setTransferSubCountyId("");
+                setTransferWardId("");
+              }}
+              disabled={transferLoading || transferDataLoading}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
+            >
+              <option value="">Select region</option>
+              {Array.from(
+                new Set(transferCounties.map((county) => county.region).filter(Boolean))
+              )
+                .sort()
+                .map((region) => (
+                  <option key={region} value={region}>
+                    {region}
+                  </option>
+                ))}
+            </select>
+          </label>
+
+          <label className="block text-sm font-medium text-gray-700">
+            Target county
+            <select
+              value={transferCountyId}
+              onChange={(event) => {
+                setTransferCountyId(event.target.value);
+                setTransferSubCountyId("");
+                setTransferWardId("");
+              }}
+              disabled={transferLoading || transferDataLoading || !transferRegion}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
+            >
+              <option value="">Select county</option>
+              {transferCounties
+                .filter((county) => !transferRegion || county.region === transferRegion)
+                .map((county) => (
+                  <option key={county.id} value={county.id}>
+                    {county.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+
+          <label className="block text-sm font-medium text-gray-700">
+            Target sub-county
+            <select
+              value={transferSubCountyId}
+              onChange={(event) => {
+                setTransferSubCountyId(event.target.value);
+                setTransferWardId("");
+              }}
+              disabled={transferLoading || transferDataLoading || !transferCountyId}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
+            >
+              <option value="">Select sub-county</option>
+              {transferSubCounties.map((subCounty) => (
+                <option key={subCounty.id} value={subCounty.id}>
+                  {subCounty.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block text-sm font-medium text-gray-700">
+            Target ward
+            <select
+              value={transferWardId}
+              onChange={(event) => {
+                setTransferWardId(event.target.value);
+              }}
+              disabled={transferLoading || transferDataLoading}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
+            >
+              <option value="">Select ward</option>
+              {transferWards.map((ward) => (
+                <option key={ward.id} value={ward.id}>
+                  {ward.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block text-sm font-medium text-gray-700">
+            Reason for transfer
+            <textarea
+              value={transferReason}
+              onChange={(event) => setTransferReason(event.target.value)}
+              disabled={transferLoading}
+              rows={4}
+              placeholder="Explain why this member is being transferred"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
+            />
+          </label>
+        </div>
+      </Modal>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg"
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
   const tabs: { id: TabType; label: string; icon: typeof User }[] = [
     { id: "principal", label: "Principal Details", icon: User },
     {
@@ -558,7 +943,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
               <HasPermission permissions={PERMISSIONS.MEMBER_WRITE}>
                 {activeTab === "principal" && (
                   <>
-                    <Button onClick={() => openTransferModal("ward")} variant="outline" size="md">
+                    <Button onClick={() => openTransferModal()} variant="outline" size="md">
                       <Repeat2 className="w-4 h-4 mr-2" />
                       Transfer Member
                     </Button>
@@ -1201,7 +1586,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
 
       <Modal
         isOpen={transferOpen}
-        title={transferMode === "group" ? "Transfer Member Group" : "Transfer Member"}
+        title="Transfer Member"
         onClose={closeTransferModal}
         maxWidth="lg"
         footer={
@@ -1214,7 +1599,7 @@ export default function MemberDetails({ memberId, onBack }: Props) {
               onClick={() => void handleTransferMember()}
               disabled={transferLoading || transferDataLoading}
             >
-              {transferLoading ? "Transferring..." : "Confirm Transfer"}
+              {transferLoading ? "Requesting..." : "Request Transfer"}
             </Button>
           </>
         }
@@ -1243,7 +1628,6 @@ export default function MemberDetails({ memberId, onBack }: Props) {
               value={transferWardId}
               onChange={(event) => {
                 setTransferWardId(event.target.value);
-                setTransferGroupId("");
               }}
               disabled={transferLoading || transferDataLoading}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
@@ -1258,45 +1642,19 @@ export default function MemberDetails({ memberId, onBack }: Props) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Transfer type</label>
-            <select
-              value={transferRegistrationType}
-              onChange={(event) => {
-                const nextType = event.target.value as RegistrationType;
-                setTransferRegistrationType(nextType);
-                if (nextType === "INDIVIDUAL") {
-                  setTransferGroupId("");
-                }
-              }}
-              disabled={transferLoading || transferMode === "group"}
+            <label className="block text-sm font-medium text-gray-700">Reason for transfer</label>
+            <textarea
+              value={transferReason}
+              onChange={(event) => setTransferReason(event.target.value)}
+              disabled={transferLoading}
+              rows={4}
+              placeholder="Explain why this member is being transferred"
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
-            >
-              <option value="INDIVIDUAL">Individual member</option>
-              <option value="GROUP">Group member</option>
-            </select>
+            />
           </div>
 
-          {transferRegistrationType === "GROUP" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Target group</label>
-              <select
-                value={transferGroupId}
-                onChange={(event) => setTransferGroupId(event.target.value)}
-                disabled={transferLoading || transferDataLoading || !transferWardId}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
-              >
-                <option value="">Select group</option>
-                {transferGroups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name} ({group.groupId})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <p className="text-xs text-gray-500">
-            Only wards and groups approved for your account are available.
+            The receiving facilitator will choose the group during approval.
           </p>
         </div>
       </Modal>

@@ -109,9 +109,35 @@ export interface MemberExistsResponseDTO {
 }
 
 export interface TransferMemberRequestDTO {
+  countyId?: number;
+  subCountyId?: number;
   wardId: number;
+  reason: string;
+}
+
+export interface ApproveMemberTransferRequestDTO {
+  groupId: number;
+}
+
+export interface MemberTransferRequestDTO {
+  id: number;
+  memberId: number;
+  memberName: string;
+  nationalID: string;
+  phoneNumber: string;
   registrationType: RegistrationType;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  countyId: number;
+  countyName: string;
+  subCountyId: number;
+  subCountyName: string;
+  wardId: number;
+  wardName: string;
   groupId?: number;
+  groupName?: string;
+  reason: string;
+  requestedByName?: string;
+  requestedAt?: string;
 }
 
 /**
@@ -147,6 +173,16 @@ export interface MemberListItemDTO {
   phoneNumber: string;
 
   groupName?: string;
+
+  countyName?: string;
+
+  subCountyName?: string;
+
+  wardName?: string;
+
+  memberStatus?: string;
+
+  policyStatus?: string;
 
   registrationDate: string;
 

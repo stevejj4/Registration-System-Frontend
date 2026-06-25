@@ -27,6 +27,8 @@ const MemberRegistration = lazy(
   () => import("@/features/members/components/MemberRegistration")
 );
 const GroupManagement = lazy(() => import("@/features/groups/GroupManagement"));
+const TransferApprovals = lazy(() => import("@/features/transfers/TransferApprovals"));
+const UserProfile = lazy(() => import("@/features/profile/UserProfile"));
 
 function RouteSpinner() {
   return (
@@ -147,11 +149,22 @@ export default function App() {
             }
           />
 
+          <Route path="/profile" element={<UserProfile />} />
+
           <Route
             path="/groups"
             element={
               <ProtectedRoute requiredPermissions={[PERMISSIONS.MEMBER_CREATE]}>
                 <GroupManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/transfers"
+            element={
+              <ProtectedRoute requiredPermissions={[PERMISSIONS.MEMBER_WRITE]}>
+                <TransferApprovals />
               </ProtectedRoute>
             }
           />

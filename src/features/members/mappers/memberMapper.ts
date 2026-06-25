@@ -366,6 +366,22 @@ export function mapMemberListItem(
       memberData?.groupName
     ),
 
+    countyName: safeOptionalString(memberData?.countyName ?? api?.countyName),
+
+    subCountyName: safeOptionalString(
+      memberData?.subCountyName ?? api?.subCountyName
+    ),
+
+    wardName: safeOptionalString(memberData?.wardName ?? api?.wardName),
+
+    memberStatus: safeOptionalString(
+      memberData?.memberStatus ?? api?.memberStatus
+    ),
+
+    policyStatus: safeOptionalString(
+      memberData?.policyStatus ?? api?.policyStatus
+    ),
+
     registrationDate: safeString(registrationRaw),
 
     registeredByName: safeString(

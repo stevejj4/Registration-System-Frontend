@@ -20,6 +20,7 @@ export function getPageTitle(pathname: string): string {
   if (pathname === "/admin/users") return "User Management";
   if (pathname === "/admin") return "Admin Dashboard";
   if (pathname === "/dashboard") return "Dashboard";
+  if (pathname === "/profile") return "Profile";
   if (pathname === "/forgot-password") return "Forgot Password";
   if (pathname === "/reset-password") return "Reset Password";
   return "SUN Welfare";

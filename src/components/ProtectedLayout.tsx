@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, Outlet, useLocation } from "react-router-dom";
+import { ChevronDown, LogOut, Menu, User, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Sidebar from "@/components/Sidebar";
 import { getPageTitle } from "@/utils/routes";
@@ -10,10 +10,29 @@ const ProtectedLayout: React.FC = () => {
   const { pathname } = useLocation();
   const headerTitle = getPageTitle(pathname);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setSidebarOpen(false);
+    setUserMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+
+    const onPointerDown = (event: MouseEvent) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [userMenuOpen]);
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -61,20 +80,45 @@ const ProtectedLayout: React.FC = () => {
             </h1>
           </div>
 
-          <div className="flex shrink-0 items-center gap-4">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-medium text-gray-900">
-                {user?.fullName}
-              </p>
-              <p className="text-xs text-gray-500">{user?.email}</p>
-            </div>
+          <div className="relative flex shrink-0 items-center" ref={userMenuRef}>
             <button
               type="button"
-              onClick={logout}
-              className="text-sm font-medium text-red-600 hover:text-red-700"
+              onClick={() => setUserMenuOpen((open) => !open)}
+              className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
             >
-              Logout
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-900">
+                <User className="h-4 w-4" />
+              </span>
+              <span className="hidden sm:inline">{user?.fullName ?? "User"}</span>
+              <ChevronDown className="h-4 w-4 text-gray-400" />
             </button>
+
+            {userMenuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-50 mt-3 w-44 rounded-sm bg-white py-2 shadow-lg ring-1 ring-black/5"
+              >
+                <Link
+                  to="/profile"
+                  role="menuitem"
+                  className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <User className="h-4 w-4" />
+                  Profile
+                </Link>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => void logout()}
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-red-600 hover:bg-gray-50"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </header>
 

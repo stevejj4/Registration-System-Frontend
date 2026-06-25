@@ -11,14 +11,17 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onNavigate }) => {
   const { user, navigation, navigationLoading, isAuthenticated, hasPermission } = useAuth();
-  const navigationItems = hasPermission(PERMISSIONS.MEMBER_CREATE)
-    ? [
-        ...navigation,
-        ...(navigation.some((item) => item.route === "/groups")
-          ? []
-          : [{ title: "Groups", route: "/groups", icon: "groups" }]),
-      ]
-    : navigation;
+  const navigationItems = [
+    ...navigation,
+    ...(hasPermission(PERMISSIONS.MEMBER_CREATE) &&
+    !navigation.some((item) => item.route === "/groups")
+      ? [{ title: "Groups", route: "/groups", icon: "groups" }]
+      : []),
+    ...(hasPermission(PERMISSIONS.MEMBER_WRITE) &&
+    !navigation.some((item) => item.route === "/transfers")
+      ? [{ title: "Transfers", route: "/transfers", icon: "members" }]
+      : []),
+  ];
 
   return (
     <aside

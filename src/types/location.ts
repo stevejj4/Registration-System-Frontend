@@ -1,6 +1,7 @@
 export interface CountyDTO {
   id: number;
   name: string;
+  region?: string;
 }
 
 export interface SubCountyDTO {
