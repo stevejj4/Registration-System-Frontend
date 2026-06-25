@@ -261,7 +261,7 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
     () =>
       selectedRegion
         ? counties.filter((county) => county.region === selectedRegion)
-        : counties,
+        : [],
     [counties, selectedRegion]
   );
 
@@ -815,6 +815,7 @@ export default function MemberRegistration({ onSuccess, onCancel }: Props) {
                 locationsLoading={locationsLoading || assignmentLoading}
                 groupsLoading={groupsLoading}
                 canSelectFullLocation={canSelectFullLocation}
+                assignedRegionName={assignment?.regionName ?? user?.regionName}
                 assignedCountyName={assignment?.countyName ?? user?.countyName}
                 assignedSubCountyName={
                   assignment?.subCountyName ?? user?.subCountyName

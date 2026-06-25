@@ -8,6 +8,7 @@ export type { UserRole } from "./enums";
 export interface AssignmentDTO {
   role: UserRole;
   countyId?: number;
+  regionName?: string;
   countyName?: string;
   subCountyId?: number;
   subCountyName?: string;
@@ -40,6 +41,7 @@ export interface AuthResponseDTO {
   permissions?: string[];
 
   countyId?: number;
+  regionName?: string;
   countyName?: string;
   subCountyId?: number;
   subCountyName?: string;
@@ -65,6 +67,7 @@ export interface AuthUser {
   token?: string;
 
   countyId?: number;
+  regionName?: string;
   countyName?: string;
   subCountyId?: number;
   subCountyName?: string;

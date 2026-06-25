@@ -35,6 +35,7 @@ interface Props {
   locationsLoading?: boolean;
   groupsLoading?: boolean;
   canSelectFullLocation?: boolean;
+  assignedRegionName?: string;
   assignedCountyName?: string;
   assignedSubCountyName?: string;
 }
@@ -53,6 +54,7 @@ export default function PrincipalMemberForm({
   locationsLoading = false,
   groupsLoading = false,
   canSelectFullLocation = true,
+  assignedRegionName,
   assignedCountyName,
   assignedSubCountyName,
 }: Props) {
@@ -66,6 +68,38 @@ export default function PrincipalMemberForm({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {canSelectFullLocation ? (
+          <SelectInput
+            id="principal-region"
+            label="Region"
+            value={selectedRegion}
+            onChange={(value) => {
+              onRegionChange?.(value);
+              onChange({
+                ...principal,
+                countyId: undefined,
+                subCountyId: undefined,
+                wardId: undefined,
+                groupId: undefined,
+              });
+            }}
+            options={regions.map((region) => ({
+              value: region,
+              label: region,
+            }))}
+            disabled={locationsLoading}
+          />
+        ) : (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Region
+            </label>
+            <div className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700">
+              {assignedRegionName ?? "Assigned region"}
+            </div>
+          </div>
+        )}
+
         <SelectInput
           id="principal-registration-type"
           label="Registration Type"
@@ -89,27 +123,6 @@ export default function PrincipalMemberForm({
         {canSelectFullLocation ? (
           <>
             <SelectInput
-              id="principal-region"
-              label="Region"
-              value={selectedRegion}
-              onChange={(value) => {
-                onRegionChange?.(value);
-                onChange({
-                  ...principal,
-                  countyId: undefined,
-                  subCountyId: undefined,
-                  wardId: undefined,
-                  groupId: undefined,
-                });
-              }}
-              options={regions.map((region) => ({
-                value: region,
-                label: region,
-              }))}
-              disabled={locationsLoading}
-            />
-
-            <SelectInput
               id="principal-county"
               label="County"
               value={principal.countyId ? String(principal.countyId) : ""}
@@ -127,7 +140,7 @@ export default function PrincipalMemberForm({
                 label: county.name,
               }))}
               error={errors.principalCountyId}
-              disabled={locationsLoading}
+              disabled={locationsLoading || !selectedRegion}
               required
             />
 
